@@ -1,0 +1,8 @@
+{
+  "name":"toktickit-server","private":true,"version":"1.0.0","type":"module",
+  "scripts":{"dev":"tsx watch src/server.ts","build":"tsc","start":"node dist/server.js","test":"vitest run","prisma:generate":"prisma generate","prisma:migrate":"prisma migrate dev","prisma:seed":"prisma db seed"},
+  "prisma":{"seed":"tsx prisma/seed.ts"},
+  "dependencies":{"@prisma/client":"6.16.0","dotenv":"16.4.5","express":"4.21.1"},
+  "devDependencies":{"@types/express":"5.0.0","@types/node":"22.9.0","@types/supertest":"6.0.2","prisma":"6.16.0","supertest":"7.0.0","tsx":"4.19.2","typescript":"5.6.3","vitest":"2.1.5"}
+}
+
