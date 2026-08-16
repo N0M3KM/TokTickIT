@@ -1,13 +1,13 @@
 # AI use and reflection
 
-I used Codex (GPT-5) to assist with the Lab 1 implementation. I reviewed all generated code, dependencies, commands, and tests.
+First, I used Claude (Sonnet 5) to summarize the Lab 1 sheet and plan the app development workflow. Next, I used OpenAI Codex (5.6 Terra) to assist with the Lab 1 implementation, documentation structure, and setting up most of the .md files. Finally, I used Gemini (3.6 Flash) to assist with Docker setup and clarify Git commands. I reviewed and verified all generated code, dependencies, commands, and tests.
 
 | Prompt | Reflection |
 |---|---|
-| Plan Lab 1 implementation | The requirements and dependency order kept the implementation in scope. |
-| Set up full-stack project | Specifying the required stack avoided unrelated features. |
-| Implement health check | The exact JSON contract made the endpoint testable. |
-| Seed categories | Stating the required four values prevented data mismatches. |
-| Build Check System UI | Defined loading, success, and error states clearly. |
-| Review final work | I must still personally complete GitHub workflow and peer review. |
-
+| Provide me a concise, clear, and comprehensive implementation roadmap for this project. Break down the focus areas and required step-by-step actions across the following categories: Git & Workflow/ Full-Stack Development/ Documentation & Submission Evidence /Other Key Requirements /Constraints. Keep the response structured, action-oriented, and strictly aligned with all project guidelines. | Claude did summarize and explain the development workflow step-by-step, clear and concise. |
+| Create files directly into my folder project on my laptop. Setup full-stack project as given in labsheet.pdf (Lab 1) The fullstack structure should include React.ts, TypeScript, Vite, and Bootstrap for the frontend, and Node.js, Express, and TypeScript for the backend. Configure PostgreSQL and Prisma. Make sure to follow the requirement and criteria. | Codex worked perfectly, generated entire web-app structure in one prompt and accurately met the requirements. |
+| Write me PR desciption template as a guide for peer-reviewer on what to verify. | Gemini wrote a well-structured guide for PR.|
+| Add health check following Issue 2: Implement the API health check's acceptance criteria. Commit it to feature/2-health-check. Do not merge or do anything further. | Codex did implement the health check feature, then it committed to their feat branch seperately so I could speed up my works. |
+| Implement Issue 3 and commit updated files to branch feature/3-category-seed. Do not merge or commit anything to feature/2-health-check | Codex updated category seed and help me set up Docker image.|
+| Implement Issue 4 (Display Category List) and audit features 1–4 for complete functional correctness. Ensure the UI and API flows precisely match the Part 4 Demo requirement on page 15 of the lab sheet. Clean up the GUI to look modern and refined using basic Bootstrap, keeping it strictly within scope. Explicitly handle loading, success, and error states. Do not make any Git commits yet, i will review all changes first. | App demo correctly met the acceptance criterias and final UI was satisfied, exactly same as the requirement.|
+| Review my final work and update the .md files (including test.md, reviewer.md, and ai_use.md). Afterwards, generate a structured Word document (.docx) based on the Lab 1 sheet "14. Submit One PDF File" | I must still complete GitHub workflow and peer review by myself. |
