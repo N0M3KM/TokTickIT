@@ -8,18 +8,9 @@ import { RequesterProvider } from './context/RequesterContext.js';
 import AppShell from './components/AppShell.js';
 import RequireRequester from './components/RequireRequester.js';
 import RequesterSelector from './pages/RequesterSelector.js';
-
-// Placeholder pages for routes that belong to Issues #10+
-// They are simple stubs so routing works end-to-end now.
-function MyTicketsPlaceholder() {
-  return <p style={{ color: 'var(--color-text-secondary)' }}>My Tickets — coming in Issue #10</p>;
-}
-function CreateTicketPlaceholder() {
-  return <p style={{ color: 'var(--color-text-secondary)' }}>Create Ticket — coming in Issue #10</p>;
-}
-function TicketDetailPlaceholder() {
-  return <p style={{ color: 'var(--color-text-secondary)' }}>Ticket Detail — coming in Issue #10</p>;
-}
+import MyTickets from './pages/MyTickets.js';
+import CreateTicket from './pages/CreateTicket.js';
+import TicketDetail from './pages/TicketDetail.js';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -29,16 +20,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           {/* Requester Selection — no shell, full-page */}
           <Route path="/select-requester" element={<RequesterSelector />} />
 
-          {/* Root redirect: go to /tickets (RequireRequester will redirect to selector if needed) */}
+          {/* Root: redirect to /tickets (RequireRequester handles selector redirect if needed) */}
           <Route path="/" element={<Navigate to="/tickets" replace />} />
 
-          {/* Protected routes — wrapped in AppShell + RequireRequester */}
+          {/* Protected routes — AppShell + RequireRequester */}
           <Route
             path="/tickets"
             element={
               <AppShell>
                 <RequireRequester>
-                  <MyTicketsPlaceholder />
+                  <MyTickets />
                 </RequireRequester>
               </AppShell>
             }
@@ -48,7 +39,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             element={
               <AppShell>
                 <RequireRequester>
-                  <CreateTicketPlaceholder />
+                  <CreateTicket />
                 </RequireRequester>
               </AppShell>
             }
@@ -58,7 +49,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             element={
               <AppShell>
                 <RequireRequester>
-                  <TicketDetailPlaceholder />
+                  <TicketDetail />
                 </RequireRequester>
               </AppShell>
             }
