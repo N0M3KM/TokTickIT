@@ -1,17 +1,20 @@
 import express from 'express';
-import { prisma } from './lib/prisma.js';
-
-const HEALTH_CHECK_RESPONSE = {
-  status: 'ok',
-  service: 'TokTickIT API',
-} as const;
+import categoriesRouter from './routes/categories.js';
+import relatedSystemsRouter from './routes/relatedSystems.js';
+import requestersRouter from './routes/requesters.js';
 
 const app = express();
 
+app.use(express.json());
+
+// Health check
 app.get('/api/health', (_req, res) => {
-  res.status(200).json(HEALTH_CHECK_RESPONSE);
+  res.status(200).json({ status: 'ok', service: 'TokTickIT API' });
 });
 
-app.get('/api/categories', async (_req, res) => { try { res.status(200).json(await prisma.category.findMany({ select: { id: true, name: true }, orderBy: { id: 'asc' } })); } catch { res.status(503).json({ error: 'Unable to retrieve categories from the database.' }); } });
-export default app;
+// Reference data
+app.use('/api/categories', categoriesRouter);
+app.use('/api/related-systems', relatedSystemsRouter);
+app.use('/api/requesters', requestersRouter);
 
+export default app;
