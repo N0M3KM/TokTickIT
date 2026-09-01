@@ -1,0 +1,72 @@
+/* ============================================================
+   TokTickIT — Zen Green Design Token System
+   All Lab 2+ components must use these variables.
+   No hardcoded hex values in component styles.
+   ui-spec.md §2 (Color Tokens), §3 (Typography), §4 (Spacing)
+   ============================================================ */
+
+:root {
+  /* ----- Color: Greens ----- */
+  --color-primary:        #006B3C;
+  --color-primary-hover:  #005530;
+  --color-secondary:      #0B7A46;
+  --color-pale-green:     #EAF6EF;
+
+  /* ----- Color: Surfaces ----- */
+  --color-page-bg:        #F5F7F6;
+  --color-surface:        #FFFFFF;
+  --color-border:         #D1D9D4;
+  --color-shadow:         rgba(0, 0, 0, 0.06);
+
+  /* ----- Color: Text ----- */
+  --color-text-primary:   #1A2E22;
+  --color-text-secondary: #4A6355;
+  --color-text-disabled:  #9BB5A4;
+
+  /* ----- Color: Field States ----- */
+  --color-readonly-bg:    #F0F4F1;
+  --color-editable-bg:    #FFFFFF;
+  --color-editable-border:#8BA89A;
+  --color-focus-ring:     #0B7A46;
+  --color-disabled-bg:    #E9EFEC;
+
+  /* ----- Color: Feedback ----- */
+  --color-error:          #B91C1C;
+  --color-error-bg:       #FEF2F2;
+  --color-warning:        #D97706;
+  --color-warning-bg:     #FFFBEB;
+  --color-success-text:   #166534;
+  --color-success-bg:     #EAF6EF;
+
+  /* ----- Spacing ----- */
+  --space-xs:   4px;
+  --space-sm:   8px;
+  --space-md:   16px;
+  --space-lg:   24px;
+  --space-xl:   32px;
+  --space-xxl:  48px;
+
+  /* ----- Layout ----- */
+  --max-content-width: 1200px;
+  --border-radius-control: 6px;
+  --border-radius-badge:   4px;
+  --input-height:          40px;
+  --button-height:         40px;
+  --header-height:         56px;
+}
+
+/* ---- Global resets ---- */
+body {
+  background-color: var(--color-page-bg);
+  color: var(--color-text-primary);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ---- Focus ring (accessibility) ---- */
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
