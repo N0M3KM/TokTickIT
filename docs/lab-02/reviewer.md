@@ -83,11 +83,75 @@ This document records the peer review activity for Lab 2 (Sprint 2) as required 
 
 ## Peer Review I Gave to My Partner
 
-*(To be completed — record PRs reviewed on teammates' repositories)*
+### Partner 1: Jinnakan
 
-| Partner name | Partner GitHub username |
-|-------------|------------------------|
-| *(partner name)* | *(partner username)* |
+| Field | Details |
+|-------|---------|
+| Partner name | Jinnakan |
+| Partner GitHub username | @Jinnakan |
+
+**My review comment on Jinnakan/TokTickIT PR #18 (Feature/6 — Lab 2 Schema & Seed):**
+> "TicketStatus having only one value looks odd today, but it's deliberate (spec §7): Lab 3 can add ASSIGNED/RESOLVED/etc. via a plain migration without changing the column type. Category gets isActive added non-destructively (DEFAULT true), so your 4 existing seeded rows stay valid with no backfill needed. RelatedSystem / DevRequester — same shape as each other: unique natural key (name / email), isActive, indexed on isActive since that's the column every 'active only' query filters on. Ticket — three FKs (requesterId, categoryId, relatedSystemId), all ON DELETE RESTRICT. That means Postgres will refuse to delete a Category/RelatedSystem/DevRequester that any Ticket still references — which fits the soft-removal philosophy of this sprint (nothing gets hard-deleted anyway). ticketNumber is UNIQUE NOT NULL, which has one implication worth flagging now: since it's derived from the row's own id (BR-04) but can't be NULL even briefly, ticket creation in Issue 4 will need to insert with a temporary unique placeholder, then UPDATE it to the real TKT-YYYY-NNNNNN value once the id exists — same transaction, so no caller ever observes the placeholder. That's implementation work for Issue 4, not something the schema itself needs to change for. Attachment — ticketId FK also RESTRICT (a Ticket can never be deleted out from under its Attachments, consistent with no hard-delete anywhere in Lab 2). Compound index (ticketId, isRemoved) supports the common query 'active attachments for this ticket' without a full scan."
+
+- Evidence link: https://github.com/Jinnakan/TokTickIT/pull/18
+
+**My review comment on Jinnakan/TokTickIT PR #21 (Feature 8 — Create Ticket Form):**
+
+- Inline code review on lines +174 to +193 and lines +267 to +269 regarding Category dropdown and form field implementation.
+- Evidence link: https://github.com/Jinnakan/TokTickIT/pull/21#event-30340756559
+
+**My review comment on Jinnakan/TokTickIT PR #22 (Feature — Add ticket rules, status, and stubAppFetch):**
+> "Reaching three directories up across the client/server boundary couples the client bundler to the server's internal folder layout. It works today because ticket-rules.ts happens to be pure, but nothing stops someone from adding a Prisma or Node-only import to that file later and silently breaking (or bloating) the client build. This should be a shared package/workspace (e.g. packages/shared) that both sides depend on properly, not a relative reach-through. But if you have any reason, please let me acknowledge."
+
+- Jinnakan's response: "You're right to flag this, and the critique is correct. I already suspected this risk when I made the call, but relied on no-duplicate code instead of a structural guarantee, which is exactly the gap you are pointing at. Nothing stops someone from adding a Prisma import to ticket-rules.ts later and silently breaking or bloating the client bundle. Fixing it properly with an npm workspace, as you suggested."
+- My follow-up: "Cool! Everything seems good now."
+- Evidence link: https://github.com/Jinnakan/TokTickIT/pull/22#event-30347114184
+
+**My review comment on Jinnakan/TokTickIT PR #23 (Ticket Detail + Attachment Lifecycle):**
+> "The code is clean. Everything seems to be functioning correctly. Nice job :)"
+
+- Evidence link: https://github.com/Jinnakan/TokTickIT/pull/23
+
+**My review comment on Jinnakan/TokTickIT PR #24 (Release Readiness):**
+> "The pull request successfully aligns with the overarching issue criteria and repository standards. The implementation cleanly addresses the intended feature requirements while ensuring modularity and maintainable code layout. Control flow has been kept straightforward with readable naming conventions that communicate clear intent. Potential edge cases and state management are safely handled without introducing unnecessary code bloat or structural complexity. Overall, the contribution is well-formed, easy to review at a high level, and ready to be merged."
+
+- Evidence link: https://github.com/Jinnakan/TokTickIT/pull/24#event-30353671525
+
+---
+
+### Partner 2: TauForge
+
+| Field | Details |
+|-------|---------|
+| Partner name | TauForge |
+| Partner GitHub username | @TauForge |
+
+**My review comment on TauForge/TokTickIT PR #10 (Docs: Complete Lab 1 Submission Records):**
+
+- Reviewed the Lab 1 submission records PR.
+- Evidence link: https://github.com/TauForge/TokTickIT/pull/10
+
+**My review comment on TauForge/TokTickIT PR #19 (Issue 1: Lab 2 Spec Docs):**
+> "The code is clean. Everything seems to be functioning correctly. Excellent work :)"
+
+- TauForge's response: "Thanks! This one's just the spec docs and test DB harness, so nothing risky. PR #2 (data model) is next once this merges."
+- Evidence link: https://github.com/TauForge/TokTickIT/pull/19#event-30350926576
+
+**My review comment on TauForge/TokTickIT PR #22 (Issue 4: Implement Ticket Creation):**
+
+- Reviewed ticket creation implementation covering CreateTicket screen, client-side validation, and POST /api/tickets.
+- Evidence link: https://github.com/TauForge/TokTickIT/pull/22#event-30353045355
+
+**My review comment on TauForge/TokTickIT PR #23 (Issue 5: My Tickets List, Filter, Sort):**
+> "LGTM Good job :)"
+
+- TauForge's response: "LGTM Good job :) Thx for review you can merge"
+- Evidence link: https://github.com/TauForge/TokTickIT/pull/23#issuecomment-5495722143
+
+**My review comment on TauForge/TokTickIT PR #24 (Issue 6: Ticket Detail with Attachments):**
+
+- Reviewed Ticket Detail implementation with full attachment lifecycle (upload, download, soft-remove).
+- Evidence link: https://github.com/TauForge/TokTickIT/pull/24#issuecomment-5495912363
 
 ---
 
