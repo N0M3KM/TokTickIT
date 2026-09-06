@@ -1,17 +1,34 @@
+import fs from 'fs';
+import path from 'path';
 import express from 'express';
-import { prisma } from './lib/prisma.js';
+import categoriesRouter from './routes/categories.js';
+import relatedSystemsRouter from './routes/relatedSystems.js';
+import requestersRouter from './routes/requesters.js';
+import ticketsRouter from './routes/tickets.js';
+import attachmentsRouter from './routes/attachments.js';
 
-const HEALTH_CHECK_RESPONSE = {
-  status: 'ok',
-  service: 'TokTickIT API',
-} as const;
+// Ensure uploads directory exists at startup
+const uploadsDir = path.resolve('uploads');
+fs.mkdirSync(uploadsDir, { recursive: true });
 
 const app = express();
 
+app.use(express.json());
+
+// Health check
 app.get('/api/health', (_req, res) => {
-  res.status(200).json(HEALTH_CHECK_RESPONSE);
+  res.status(200).json({ status: 'ok', service: 'TokTickIT API' });
 });
 
-app.get('/api/categories', async (_req, res) => { try { res.status(200).json(await prisma.category.findMany({ select: { id: true, name: true }, orderBy: { id: 'asc' } })); } catch { res.status(503).json({ error: 'Unable to retrieve categories from the database.' }); } });
-export default app;
+// Reference data
+app.use('/api/categories', categoriesRouter);
+app.use('/api/related-systems', relatedSystemsRouter);
+app.use('/api/requesters', requestersRouter);
 
+// Tickets
+app.use('/api/tickets', ticketsRouter);
+
+// Attachments — nested under tickets, mergeParams is set in the router
+app.use('/api/tickets/:id/attachments', attachmentsRouter);
+
+export default app;

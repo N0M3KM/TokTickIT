@@ -7,9 +7,111 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum TicketStatus {
+  NEW
+}
+
+// ---------------------------------------------------------------------------
+// Reference tables
+// ---------------------------------------------------------------------------
+
 model Category {
   id        Int      @id @default(autoincrement())
   name      String   @unique
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+
+  tickets Ticket[]
 }
 
+model RelatedSystem {
+  id       Int     @id @default(autoincrement())
+  name     String  @unique
+  isActive Boolean @default(true)
+
+  tickets Ticket[]
+}
+
+// ---------------------------------------------------------------------------
+// Development Requester (Lab 2 testing mechanism — not real authentication)
+// In Lab 3 this is replaced by a proper User model with authentication.
+// The requesterId FK on Ticket will migrate cleanly (BR-27).
+// ---------------------------------------------------------------------------
+
+model DevRequester {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets Ticket[]
+
+  @@index([isActive])
+}
+
+// ---------------------------------------------------------------------------
+// Ticket
+// ---------------------------------------------------------------------------
+
+model Ticket {
+  id                Int          @id @default(autoincrement())
+  ticketNumber      String       @unique
+  requesterId       Int
+  categoryId        Int
+  relatedSystemId   Int?
+  summary           String
+  description       String
+  requestedPriority Priority     @default(MEDIUM)
+  currentStatus     TicketStatus @default(NEW)
+  ticketDate        DateTime     @default(now())
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  requester     DevRequester   @relation(fields: [requesterId], references: [id])
+  category      Category       @relation(fields: [categoryId], references: [id])
+  relatedSystem RelatedSystem? @relation(fields: [relatedSystemId], references: [id])
+  attachments   Attachment[]
+
+  @@index([requesterId])
+  @@index([ticketNumber])
+  @@index([currentStatus])
+  @@index([requestedPriority])
+  @@index([categoryId])
+  @@index([createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Attachment
+// ---------------------------------------------------------------------------
+
+model Attachment {
+  id                Int       @id @default(autoincrement())
+  ticketId          Int
+  originalFilename  String
+  storageFilename   String    @unique
+  mimeType          String
+  sizeBytes         Int
+  uploadedAt        DateTime  @default(now())
+  removedAt         DateTime?
+  removalReason     String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+
+  @@index([ticketId])
+  @@index([removedAt])
+}
