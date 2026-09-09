@@ -13,6 +13,7 @@
 
 | Issue | Branch | PR Title | PR Link | Status |
 |-------|--------|----------|---------|--------|
+| #12 — Lab 3 Spec Docs | `feature/12-lab3-spec-docs` | docs: add Lab 3 specification, test plan, UI spec, and API spec | *(PR URL)* | *(pending)* |
 | #13 — Authentication Foundation | `feature/13-auth-foundation` | feat(auth): JWT login, logout, current-user, password change, migration | *(PR URL)* | *(pending)* |
 | #14 — IT Staff Ticket Queue | `feature/14-staff-queue` | feat(staff): IT Staff Ticket Queue API and UI | *(PR URL)* | *(pending)* |
 | #15 — IT Staff Ticket Operations | `feature/15-staff-ticket-ops` | feat(staff): ownership, IT Priority, status transitions, comments, notes | *(PR URL)* | *(pending)* |
@@ -39,10 +40,11 @@
 ```
 main (f049794 — Lab 2 release)
   │
-  lab3-staging ──┬── feature/13-auth-foundation      → PR → lab3-staging
-                 ├── feature/14-staff-queue           → PR → lab3-staging
-                 ├── feature/15-staff-ticket-ops      → PR → lab3-staging
-                 ├── feature/16-admin-users           → PR → lab3-staging
-                 └── feature/17-lab3-e2e-and-release  → PR → lab3-staging
+  lab3-staging ──┬── feature/12-lab3-spec-docs   → PR → lab3-staging
+                 ├── feature/13-auth-foundation   → PR → lab3-staging
+                 ├── feature/14-staff-queue       → PR → lab3-staging
+                 ├── feature/15-staff-ticket-ops  → PR → lab3-staging
+                 ├── feature/16-admin-users       → PR → lab3-staging
+                 └── feature/17-lab3-e2e-and-release → PR → lab3-staging
   lab3-staging → main  (release PR)
 ```
