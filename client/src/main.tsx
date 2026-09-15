@@ -13,6 +13,7 @@ import MyTickets from './pages/MyTickets.js';
 import CreateTicket from './pages/CreateTicket.js';
 import TicketDetail from './pages/TicketDetail.js';
 import StaffTicketQueue from './pages/StaffTicketQueue.js';
+import UserManagement from './pages/UserManagement.js';
 
 function Home() {
   const { user } = useAuth();
@@ -38,6 +39,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <Route path="/tickets/new" element={<Protected roles={['REQUESTER']}><CreateTicket /></Protected>} />
     <Route path="/tickets/:id" element={<Protected roles={['REQUESTER']}><TicketDetail /></Protected>} />
     <Route path="/queue" element={<Protected roles={['IT_STAFF', 'ADMINISTRATOR']}><StaffTicketQueue /></Protected>} />
+    <Route path="/admin/users" element={<Protected roles={['ADMINISTRATOR']}><UserManagement /></Protected>} />
     <Route path="/forbidden" element={<Forbidden />} />
     <Route path="*" element={<Navigate to="/" replace />} />
   </Routes></AuthProvider></BrowserRouter></React.StrictMode>,
