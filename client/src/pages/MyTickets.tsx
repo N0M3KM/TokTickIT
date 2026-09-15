@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext.js';
 import Badge, { type BadgeVariant } from '../components/Badge.js';
 import LoadingSpinner from '../components/LoadingSpinner.js';
 import EmptyState from '../components/EmptyState.js';
@@ -38,6 +39,7 @@ type SortOrder = 'asc' | 'desc';
 // ---------------------------------------------------------------------------
 export default function MyTickets() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const [tickets,    setTickets]    = useState<Ticket[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>({ page: 1, pageSize: 10, total: 0, totalPages: 1 });
@@ -77,7 +79,19 @@ export default function MyTickets() {
       if (priority)   params.set('priority',   priority);
       if (status)     params.set('status',     status);
 
-      const res = await fetch(`/api/tickets?${params.toString()}`);
+      const res = await fetch(`/api/tickets?${params.toString()}`, { credentials: 'same-origin' });
+      if (res.status === 401) {
+        await logout();
+        navigate('/login', { replace: true });
+        return;
+      }
+      if (res.status === 403) {
+        const body = await res.json().catch(() => null) as { error?: { code?: string } } | null;
+        if (body?.error?.code === 'PASSWORD_CHANGE_REQUIRED') {
+          navigate('/change-password', { replace: true });
+          return;
+        }
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { data: Ticket[]; pagination: PaginationMeta };
       setTickets(data.data);
@@ -87,7 +101,7 @@ export default function MyTickets() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, sortField, sortOrder, search, categoryId, priority, status]);
+  }, [page, pageSize, sortField, sortOrder, search, categoryId, priority, status, logout, navigate]);
 
   useEffect(() => { void fetchTickets(); }, [fetchTickets]);
 
