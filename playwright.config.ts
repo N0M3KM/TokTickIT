@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Run: npx playwright test e2e/lab-02/
  * The full stack (client + server) must be running before executing E2E tests.
  *   Client: http://localhost:5173  (npm run dev inside client/)
- *   Server: http://localhost:3000  (npm run dev inside server/)
+ *   Server: http://localhost:3001  (npm run dev inside server/)
  */
 export default defineConfig({
   testDir: './e2e',

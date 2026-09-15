@@ -383,12 +383,11 @@ Auth: Admin only
   "name": "Alex Thompson",
   "email": "alex.t@example.com",
   "role": "IT_STAFF",
-  "isActive": true,
-  "initialPassword": "Welcome@1!"
+  "isActive": true
 }
 ```
 
-**Response — 201 Created** — user object (no passwordHash).
+**Response — 201 Created** — `{ user, initialPassword }`. `initialPassword` is generated on the server, shown once to the Administrator UI, and is never persisted or logged.
 
 **Error cases**
 
@@ -431,15 +430,9 @@ POST /api/users/:id/set-password
 ```
 Auth: Admin only
 
-**Request body**
-```json
-{ "password": "NewTemp@99!" }
-```
+**Request body**: none. The server generates a secure random temporary password.
 
-**Response — 200 OK**
-```json
-{ "message": "Initial password set. User must change password at next login." }
-```
+**Response — 200 OK** — `{ "message": "...", "initialPassword": "..." }`. The cleartext temporary password is returned once only.
 Sets `mustChangePassword = true` on the user.
 
 ---

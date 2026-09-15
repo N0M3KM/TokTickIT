@@ -70,8 +70,8 @@ export default function CreateTicket() {
     setRefError(false);
     try {
       const [catRes, sysRes] = await Promise.all([
-        fetch('/api/categories'),
-        fetch('/api/related-systems'),
+        fetch('/api/categories', { credentials: 'same-origin' }),
+        fetch('/api/related-systems', { credentials: 'same-origin' }),
       ]);
       if (!catRes.ok || !sysRes.ok) throw new Error();
       const [cats, syss] = await Promise.all([
@@ -150,6 +150,7 @@ export default function CreateTicket() {
 
       const res  = await fetch('/api/tickets', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -168,7 +169,7 @@ export default function CreateTicket() {
         const fd = new FormData();
         fd.append('file', file);
         const attachRes = await fetch(`/api/tickets/${ticket.id}/attachments`, {
-          method: 'POST', body: fd,
+          method: 'POST', credentials: 'same-origin', body: fd,
         });
         if (!attachRes.ok) {
           setFailedFileName(file.name);

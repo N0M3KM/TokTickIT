@@ -21,7 +21,7 @@ export default function StaffTicketQueue() {
     try { const response = await fetch(`/api/queue?${query}`, { credentials: 'same-origin' }); if (!response.ok) throw new Error(); const body = await response.json() as { data: Ticket[]; pagination: Page }; setTickets(body.data); setPage(body.pagination); } catch { setError('Could not load the ticket queue. Please try again.'); } finally { setLoading(false); }
   }, [page.page, page.pageSize, sort, order, search, categoryId, requestedPriority, itPriority, status, ownerId, user?.id]);
   useEffect(() => { void load(); }, [load]);
-  useEffect(() => { fetch('/api/categories').then((r) => r.ok ? r.json() : []).then(setCategories).catch(() => {}); }, []);
+  useEffect(() => { fetch('/api/categories', { credentials: 'same-origin' }).then((r) => r.ok ? r.json() : []).then(setCategories).catch(() => {}); }, []);
   function clear() { setSearch(''); setCategoryId(''); setRequestedPriority(''); setItPriority(''); setStatus(''); setOwnerId(''); setPage((p) => ({ ...p, page: 1 })); }
   function changeSort(field: typeof sort) { if (field === sort) setOrder((value) => value === 'asc' ? 'desc' : 'asc'); else { setSort(field); setOrder('desc'); } setPage((p) => ({ ...p, page: 1 })); }
   const filter = { height: 40, border: '1px solid var(--color-editable-border)', borderRadius: 6, padding: '0 8px', background: '#fff' } as const;

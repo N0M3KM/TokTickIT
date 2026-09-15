@@ -107,7 +107,7 @@ export default function MyTickets() {
 
   // Load categories for filter dropdown
   useEffect(() => {
-    fetch('/api/categories')
+    fetch('/api/categories', { credentials: 'same-origin' })
       .then((r) => r.json() as Promise<Category[]>)
       .then(setCategories)
       .catch(() => {});

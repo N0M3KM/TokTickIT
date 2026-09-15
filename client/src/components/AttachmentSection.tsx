@@ -64,7 +64,7 @@ export default function AttachmentSection({
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch(`/api/tickets/${ticketId}/attachments`, { method: 'POST', body: fd });
+      const res = await fetch(`/api/tickets/${ticketId}/attachments`, { method: 'POST', credentials: 'same-origin', body: fd });
       if (!res.ok) {
         const data = await res.json() as { error?: { message?: string } };
         throw new Error(data.error?.message ?? 'Upload failed.');
@@ -95,6 +95,7 @@ export default function AttachmentSection({
     try {
       const res = await fetch(`/api/tickets/${ticketId}/attachments/${removeTarget.id}`, {
         method: 'DELETE',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ removalReason: removalReason.trim() }),
       });

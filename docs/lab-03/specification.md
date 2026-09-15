@@ -67,9 +67,9 @@ The system now needs real users with passwords. An Administrator manages user ac
 | FR-15 | IT Staff and Administrator may create Internal Notes on a ticket; Internal Notes are invisible to Requesters. |
 | FR-16 | A Requester may click "Problem Appears Resolved" to indicate the issue appears fixed; this does not formally change ticket status but sets a `requesterResolvedAt` timestamp. |
 | FR-17 | An Administrator may view the full user list with optional name/email search and optional role filter. |
-| FR-18 | An Administrator may create a user with: full name, email, one role, active/inactive state, and an initial password that must be changed at first login. |
+| FR-18 | An Administrator may create a user with: full name, email, one role, and active/inactive state. The server generates a one-time initial password that must be changed at first login. |
 | FR-19 | An Administrator may edit a user's name, email, role, and activation state. |
-| FR-20 | An Administrator may set a new initial password for any user; `mustChangePassword` is reset to true. |
+| FR-20 | An Administrator may generate a new one-time initial password for any user; `mustChangePassword` is reset to true. |
 | FR-21 | An Administrator may not deactivate their own account. |
 | FR-22 | An Administrator may not deactivate or alter the last remaining active Administrator account. |
 | FR-23 | Duplicate email addresses shall be rejected with a 409 Conflict response. |

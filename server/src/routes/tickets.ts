@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { Priority, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { requireRole } from '../middleware/requireAuth.js';
 import { generateTicketNumber } from '../lib/ticketNumber.js';
 import {
   trimField,
@@ -82,7 +83,7 @@ function formatTicket(t: {
 // ---------------------------------------------------------------------------
 // POST /api/tickets — Create a ticket (api-spec.md §3.1)
 // ---------------------------------------------------------------------------
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireRole('REQUESTER'), async (req: Request, res: Response) => {
   try {
     // BR-03: authenticated user identity determines ownership — ignore any client-supplied requesterId
     const requesterId = req.user!.id;
@@ -207,7 +208,7 @@ router.post('/', async (req: Request, res: Response) => {
 // GET /api/tickets — List requester's tickets with search/filter/sort/page
 // api-spec.md §3.2, §8, §9
 // ---------------------------------------------------------------------------
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireRole('REQUESTER'), async (req: Request, res: Response) => {
   try {
     // BR-03: use authenticated identity — ignore any client-supplied requesterId
     const requesterIdNum = req.user!.id;
@@ -353,7 +354,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     // Ownership check — BR-07
-    if (ticket.requesterId !== requesterIdNum) {
+    if (req.user!.role === 'REQUESTER' && ticket.requesterId !== requesterIdNum) {
       return res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'You do not have permission to view this ticket.' },
       });

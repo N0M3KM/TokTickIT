@@ -1,24 +1,86 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useAuth, type UserRole } from '../context/AuthContext.js';
 
 type User = { id: number; name: string; email: string; role: UserRole; isActive: boolean; mustChangePassword: boolean };
-type Draft = { name: string; email: string; role: UserRole; isActive: boolean; initialPassword: string };
-const blank: Draft = { name: '', email: '', role: 'REQUESTER', isActive: true, initialPassword: '' };
+type Draft = { name: string; email: string; role: UserRole; isActive: boolean };
+type PasswordResponse = { initialPassword?: string; error?: { message?: string } };
+const blankDraft: Draft = { name: '', email: '', role: 'REQUESTER', isActive: true };
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>([]); const [search, setSearch] = useState(''); const [role, setRole] = useState('');
-  const [draft, setDraft] = useState<Draft>(blank); const [editing, setEditing] = useState<User | null>(null); const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false); const [error, setError] = useState(''); const [success, setSuccess] = useState('');
-  const load = useCallback(async () => { setLoading(true); setError(''); try { const params = new URLSearchParams(); if (search) params.set('search', search); if (role) params.set('role', role); const response = await fetch(`/api/users?${params}`, { credentials: 'same-origin' }); if (!response.ok) throw new Error(); setUsers(await response.json() as User[]); } catch { setError('Could not load users. Please try again.'); } finally { setLoading(false); } }, [search, role]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [search, setSearch] = useState('');
+  const [role, setRole] = useState('');
+  const [draft, setDraft] = useState<Draft>(blankDraft);
+  const [editing, setEditing] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [generatedPassword, setGeneratedPassword] = useState('');
+
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    try {
+      const params = new URLSearchParams();
+      if (search) params.set('search', search);
+      if (role) params.set('role', role);
+      const response = await fetch(`/api/users?${params}`, { credentials: 'same-origin' });
+      if (!response.ok) throw new Error('Could not load users. Please try again.');
+      setUsers(await response.json() as User[]);
+    } catch (reason) { setError((reason as Error).message); }
+    finally { setLoading(false); }
+  }, [role, search]);
+
   useEffect(() => { const timer = setTimeout(() => void load(), 250); return () => clearTimeout(timer); }, [load]);
-  function beginCreate() { setEditing(null); setDraft(blank); setError(''); setSuccess(''); }
-  function beginEdit(user: User) { setEditing(user); setDraft({ name: user.name, email: user.email, role: user.role, isActive: user.isActive, initialPassword: '' }); setError(''); setSuccess(''); }
-  async function save(event: React.FormEvent) { event.preventDefault(); setSaving(true); setError(''); setSuccess(''); try { const path = editing ? `/api/users/${editing.id}` : '/api/users'; const body = editing ? { name: draft.name, email: draft.email, role: draft.role, isActive: draft.isActive } : draft; const response = await fetch(path, { method: editing ? 'PATCH' : 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const responseBody = await response.json().catch(() => null) as { error?: { message?: string } } | null; if (!response.ok) throw new Error(responseBody?.error?.message ?? 'Could not save user.'); setSuccess(editing ? 'User updated.' : 'User created. The user must change their password at first login.'); beginCreate(); await load(); } catch (reason) { setError((reason as Error).message); } finally { setSaving(false); } }
-  async function setPassword() { if (!editing || !draft.initialPassword) return; setSaving(true); setError(''); try { const response = await fetch(`/api/users/${editing.id}/set-password`, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: draft.initialPassword }) }); const body = await response.json().catch(() => null) as { error?: { message?: string } } | null; if (!response.ok) throw new Error(body?.error?.message ?? 'Could not set password.'); setSuccess('Initial password set. The user must change it at next login.'); setDraft((value) => ({ ...value, initialPassword: '' })); } catch (reason) { setError((reason as Error).message); } finally { setSaving(false); } }
-  const ownAccount = editing?.id === currentUser?.id;
-  return <section><div style={header}><div><h1 style={{ margin: 0 }}>Users</h1><p style={muted}>Manage TokTickIT user accounts.</p></div><button onClick={beginCreate} style={primary}>+ Create User</button></div><div style={filters}><input aria-label="Search users" placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.target.value)} style={input} /><select aria-label="Filter role" value={role} onChange={(e) => setRole(e.target.value)} style={input}><option value="">All roles</option><option value="REQUESTER">Requester</option><option value="IT_STAFF">IT Staff</option><option value="ADMINISTRATOR">Admin</option></select></div>{error && <p role="alert" style={errorStyle}>{error}</p>}{success && <p role="status" style={successStyle}>{success}</p>}
-    <div style={layout}><div>{loading ? <p role="status">Loading users...</p> : <table style={table}><thead><tr><th style={cell}>Name</th><th style={cell}>Email</th><th style={cell}>Role</th><th style={cell}>Status</th><th style={cell}>Action</th></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td style={cell}>{user.name}</td><td style={cell}>{user.email}</td><td style={cell}>{label(user.role)}</td><td style={cell}>{user.isActive ? 'Active' : 'Inactive'}</td><td style={cell}><button onClick={() => beginEdit(user)} style={secondary}>Edit</button></td></tr>)}</tbody></table>}</div><form onSubmit={save} style={panel}><h2 style={{ marginTop: 0 }}>{editing ? `Edit ${editing.name}` : 'Create User'}</h2><Field label="Full name"><input required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} style={input} /></Field><Field label="Email address"><input required type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} style={input} /></Field><Field label="Role"><select value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as UserRole })} style={input}><option value="REQUESTER">Requester</option><option value="IT_STAFF">IT Staff</option><option value="ADMINISTRATOR">Administrator</option></select></Field><Field label="Active"><label><input type="checkbox" checked={draft.isActive} disabled={ownAccount} onChange={(e) => setDraft({ ...draft, isActive: e.target.checked })} /> Active</label>{ownAccount && <small style={muted}> You cannot deactivate your own account.</small>}</Field><Field label={editing ? 'Set new initial password' : 'Initial password'}><input required={!editing} type="password" value={draft.initialPassword} onChange={(e) => setDraft({ ...draft, initialPassword: e.target.value })} style={input} /></Field><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button disabled={saving} type="submit" style={primary}>{saving ? 'Saving...' : editing ? 'Save User' : 'Create User'}</button>{editing && <button disabled={saving || !draft.initialPassword} type="button" onClick={() => void setPassword()} style={secondary}>Set Password</button>}</div></form></div></section>;
+  function startCreate() { setEditing(null); setDraft(blankDraft); setError(''); setGeneratedPassword(''); }
+  function startEdit(user: User) { setEditing(user); setDraft({ name: user.name, email: user.email, role: user.role, isActive: user.isActive }); setError(''); setGeneratedPassword(''); }
+
+  async function save(event: FormEvent) {
+    event.preventDefault(); setSaving(true); setError(''); setGeneratedPassword('');
+    try {
+      const response = await fetch(editing ? `/api/users/${editing.id}` : '/api/users', {
+        method: editing ? 'PATCH' : 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft),
+      });
+      const body = await response.json().catch(() => ({})) as PasswordResponse;
+      if (!response.ok) throw new Error(body.error?.message ?? 'Could not save user.');
+      if (editing) startCreate(); else setGeneratedPassword(body.initialPassword ?? '');
+      await load();
+    } catch (reason) { setError((reason as Error).message); }
+    finally { setSaving(false); }
+  }
+
+  async function resetPassword() {
+    if (!editing) return;
+    setSaving(true); setError(''); setGeneratedPassword('');
+    try {
+      const response = await fetch(`/api/users/${editing.id}/set-password`, { method: 'POST', credentials: 'same-origin' });
+      const body = await response.json().catch(() => ({})) as PasswordResponse;
+      if (!response.ok) throw new Error(body.error?.message ?? 'Could not reset the password.');
+      setGeneratedPassword(body.initialPassword ?? ''); await load();
+    } catch (reason) { setError((reason as Error).message); }
+    finally { setSaving(false); }
+  }
+
+  const editingOwnAccount = editing?.id === currentUser?.id;
+  return <section>
+    <header style={headerStyle}><div><h1 style={{ margin: 0 }}>Users</h1><p style={muted}>Manage TokTickIT user accounts.</p></div><button onClick={startCreate} style={primaryButton}>+ Create User</button></header>
+    <div style={filterStyle}><input aria-label="Search users" placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.target.value)} style={inputStyle} /><select aria-label="Filter role" value={role} onChange={(e) => setRole(e.target.value)} style={inputStyle}><option value="">All roles</option><option value="REQUESTER">Requester</option><option value="IT_STAFF">IT Staff</option><option value="ADMINISTRATOR">Administrator</option></select></div>
+    {error && <p role="alert" style={errorStyle}>{error}</p>}{generatedPassword && <PasswordNotice password={generatedPassword} onDismiss={() => setGeneratedPassword('')} />}
+    <div style={layoutStyle}><UserTable users={users} loading={loading} onEdit={startEdit} /><form onSubmit={save} style={panelStyle}>
+      <h2 style={{ marginTop: 0 }}>{editing ? `Edit ${editing.name}` : 'Create User'}</h2>
+      <FormFields draft={draft} setDraft={setDraft} disableActive={Boolean(editingOwnAccount)} />
+      {editingOwnAccount && <p style={muted}>You cannot deactivate your own account.</p>}
+      <div style={actionsStyle}><button disabled={saving} type="submit" style={primaryButton}>{saving ? 'Saving...' : editing ? 'Save User' : 'Create User'}</button>{editing && <button disabled={saving} type="button" onClick={() => void resetPassword()} style={secondaryButton}>Generate Reset Password</button>}</div>
+    </form></div>
+  </section>;
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label style={{ display: 'block', marginBottom: 12, fontWeight: 600 }}>{label}<span style={{ display: 'block', marginTop: 4, fontWeight: 400 }}>{children}</span></label>; }
-function label(role: UserRole) { return role === 'IT_STAFF' ? 'IT Staff' : role === 'ADMINISTRATOR' ? 'Admin' : 'Requester'; }
-const header: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'start', flexWrap: 'wrap' }; const filters: React.CSSProperties = { display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap' }; const layout: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 380px)', gap: 20, alignItems: 'start' }; const table: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', background: '#fff' }; const cell: React.CSSProperties = { padding: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'left' }; const panel: React.CSSProperties = { padding: 18, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 6 }; const input: React.CSSProperties = { width: '100%', boxSizing: 'border-box', height: 40, border: '1px solid var(--color-editable-border)', borderRadius: 6, padding: '0 8px' }; const primary: React.CSSProperties = { height: 36, border: 0, borderRadius: 6, padding: '0 12px', background: 'var(--color-primary)', color: '#fff', cursor: 'pointer' }; const secondary: React.CSSProperties = { height: 32, border: '1px solid var(--color-primary)', borderRadius: 6, padding: '0 10px', background: '#fff', color: 'var(--color-primary)', cursor: 'pointer' }; const errorStyle: React.CSSProperties = { color: 'var(--color-error)', background: 'var(--color-error-bg)', padding: 10 }; const successStyle: React.CSSProperties = { color: 'var(--color-success-text)', background: 'var(--color-success-bg)', padding: 10 }; const muted: React.CSSProperties = { color: 'var(--color-text-secondary)', margin: '4px 0' };
+
+function UserTable({ users, loading, onEdit }: { users: User[]; loading: boolean; onEdit: (user: User) => void }) {
+  if (loading) return <p role="status">Loading users...</p>;
+  return <table style={tableStyle}><thead><tr><th style={cellStyle}>Name</th><th style={cellStyle}>Email</th><th style={cellStyle}>Role</th><th style={cellStyle}>Status</th><th style={cellStyle}>Action</th></tr></thead><tbody>{users.map((user) => <tr key={user.id}><td style={cellStyle}>{user.name}</td><td style={cellStyle}>{user.email}</td><td style={cellStyle}>{roleLabel(user.role)}</td><td style={cellStyle}>{user.isActive ? 'Active' : 'Inactive'}</td><td style={cellStyle}><button onClick={() => onEdit(user)} style={secondaryButton}>Edit</button></td></tr>)}</tbody></table>;
+}
+function FormFields({ draft, setDraft, disableActive }: { draft: Draft; setDraft: (value: Draft) => void; disableActive: boolean }) { return <><Field label="Full name"><input required value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} style={inputStyle} /></Field><Field label="Email address"><input required type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} style={inputStyle} /></Field><Field label="Role"><select value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value as UserRole })} style={inputStyle}><option value="REQUESTER">Requester</option><option value="IT_STAFF">IT Staff</option><option value="ADMINISTRATOR">Administrator</option></select></Field><Field label="Active"><label><input type="checkbox" checked={draft.isActive} disabled={disableActive} onChange={(e) => setDraft({ ...draft, isActive: e.target.checked })} /> Active</label></Field></>; }
+function PasswordNotice({ password, onDismiss }: { password: string; onDismiss: () => void }) { return <div role="status" style={passwordStyle}><strong>Temporary password — copy it now:</strong><code style={{ marginLeft: 8 }}>{password}</code><p style={{ margin: '8px 0' }}>It is shown once and cannot be recovered. The user must change it at first login.</p><button onClick={onDismiss} style={secondaryButton}>I copied it</button></div>; }
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label style={fieldStyle}>{label}<span style={{ display: 'block', marginTop: 4, fontWeight: 400 }}>{children}</span></label>; }
+function roleLabel(role: UserRole) { return role === 'IT_STAFF' ? 'IT Staff' : role === 'ADMINISTRATOR' ? 'Administrator' : 'Requester'; }
+const headerStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'start', flexWrap: 'wrap' }; const filterStyle: React.CSSProperties = { display: 'flex', gap: 8, margin: '16px 0', flexWrap: 'wrap' }; const layoutStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 380px)', gap: 20, alignItems: 'start' }; const tableStyle: React.CSSProperties = { width: '100%', borderCollapse: 'collapse', background: '#fff' }; const cellStyle: React.CSSProperties = { padding: 10, borderBottom: '1px solid var(--color-border)', textAlign: 'left' }; const panelStyle: React.CSSProperties = { padding: 18, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 6 }; const fieldStyle: React.CSSProperties = { display: 'block', marginBottom: 12, fontWeight: 600 }; const inputStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', height: 40, border: '1px solid var(--color-editable-border)', borderRadius: 6, padding: '0 8px' }; const actionsStyle: React.CSSProperties = { display: 'flex', gap: 8, flexWrap: 'wrap' }; const primaryButton: React.CSSProperties = { minHeight: 36, border: 0, borderRadius: 6, padding: '0 12px', background: 'var(--color-primary)', color: '#fff', cursor: 'pointer' }; const secondaryButton: React.CSSProperties = { minHeight: 32, border: '1px solid var(--color-primary)', borderRadius: 6, padding: '0 10px', background: '#fff', color: 'var(--color-primary)', cursor: 'pointer' }; const errorStyle: React.CSSProperties = { color: 'var(--color-error)', background: 'var(--color-error-bg)', padding: 10 }; const passwordStyle: React.CSSProperties = { color: 'var(--color-success-text)', background: 'var(--color-success-bg)', padding: 12, marginBottom: 16 }; const muted: React.CSSProperties = { color: 'var(--color-text-secondary)', margin: '4px 0' };

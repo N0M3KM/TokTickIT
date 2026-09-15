@@ -37,7 +37,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
     <Route path="/tickets" element={<Protected roles={['REQUESTER']}><MyTickets /></Protected>} />
     <Route path="/tickets/new" element={<Protected roles={['REQUESTER']}><CreateTicket /></Protected>} />
-    <Route path="/tickets/:id" element={<Protected roles={['REQUESTER']}><TicketDetail /></Protected>} />
+    <Route path="/tickets/:id" element={<Protected roles={['REQUESTER', 'IT_STAFF', 'ADMINISTRATOR']}><TicketDetail /></Protected>} />
     <Route path="/queue" element={<Protected roles={['IT_STAFF', 'ADMINISTRATOR']}><StaffTicketQueue /></Protected>} />
     <Route path="/admin/users" element={<Protected roles={['ADMINISTRATOR']}><UserManagement /></Protected>} />
     <Route path="/forbidden" element={<Forbidden />} />

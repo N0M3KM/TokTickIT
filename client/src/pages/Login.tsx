@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
 
 export default function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -20,8 +21,10 @@ export default function Login() {
     setBusy(true); setError('');
     try {
       await login(email, password);
-      const from = (location.state as { from?: string } | null)?.from;
-      navigate(from || '/', { replace: true });
+      const fromState = (location.state as { from?: string } | null)?.from;
+      const fromQuery = searchParams.get('redirectAfterLogin');
+      const returnTo = fromState || (fromQuery?.startsWith('/') ? fromQuery : '/');
+      navigate(returnTo, { replace: true });
     } catch (reason) {
       const code = (reason as { code?: string }).code;
       setError(code === 'ACCOUNT_INACTIVE'

@@ -12,6 +12,16 @@ All tests are planned from `specification.md` AC-01–AC-21 and the Business Rul
 | UI Component / Style | Vitest + React Testing Library |
 | E2E / Responsive | Playwright |
 
+### Lab 3 release smoke command
+
+Start PostgreSQL, the server on port 3001, and the client before running:
+
+```powershell
+npx playwright test e2e/lab-03/release-api.spec.ts
+```
+
+The smoke checks cover health, unauthenticated protection of ticket endpoints, and an httpOnly administrator session. Authentication and security regression checks also cover the safe `redirectAfterLogin` return path, mandatory password-change session restoration, removal of `/api/requesters`, login throttling, and one-time server-generated temporary passwords.
+
 ---
 
 ## 2. Planned Tests

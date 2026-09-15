@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { rateLimit } from 'express-rate-limit';
 import { prisma } from '../lib/prisma.js';
 import {
   comparePassword,
@@ -23,6 +24,14 @@ const COOKIE_OPTS = {
   maxAge: 8 * 60 * 60 * 1000, // 8 hours in ms
 };
 
+const loginRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many sign-in attempts. Please try again later.' } },
+});
+
 function internalError(res: Response): void {
   res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' } });
 }
@@ -30,7 +39,7 @@ function internalError(res: Response): void {
 // ---------------------------------------------------------------------------
 // POST /api/auth/login — BR-01, BR-08, BR-09, AC-01
 // ---------------------------------------------------------------------------
-router.post('/login', async (req: Request, res: Response) => {
+router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body ?? {};
 
@@ -105,7 +114,9 @@ router.post('/logout', requireAuth, (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 // GET /api/auth/me — return current authenticated user (FR-05)
 // ---------------------------------------------------------------------------
-router.get('/me', requireAuth, requirePasswordChanged, async (req: Request, res: Response) => {
+// `/me` is deliberately available before the mandatory password change so the
+// client can restore a pending session and route it to `/change-password`.
+router.get('/me', requireAuth, async (req: Request, res: Response) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user!.id },
