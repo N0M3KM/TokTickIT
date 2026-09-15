@@ -39,3 +39,18 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Invalid or expired token.' } });
   }
 }
+
+/** Enforces role-based access after requireAuth has attached the identity. */
+export function requireRole(...roles: UserRole[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Authentication required.' } });
+      return;
+    }
+    if (!roles.includes(req.user.role)) {
+      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'You do not have permission to access this resource.' } });
+      return;
+    }
+    next();
+  };
+}

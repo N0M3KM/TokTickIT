@@ -138,7 +138,7 @@ router.post('/change-password', requireAuth, async (req: Request, res: Response)
 
     if (newPassword !== confirmPassword) {
       return res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'New password and confirmation do not match.' },
+        error: { code: 'VALIDATION_ERROR', message: 'New password and confirmation do not match.', fields: { confirmPassword: 'Passwords do not match.' } },
       });
     }
 
@@ -147,9 +147,9 @@ router.post('/change-password', requireAuth, async (req: Request, res: Response)
     if (complexityErrors.length > 0) {
       return res.status(400).json({
         error: {
-          code: 'PASSWORD_TOO_WEAK',
+          code: 'VALIDATION_ERROR',
           message: 'Password does not meet complexity requirements.',
-          rules: complexityErrors,
+          fields: { newPassword: complexityErrors.join(' ') },
         },
       });
     }
@@ -166,7 +166,7 @@ router.post('/change-password', requireAuth, async (req: Request, res: Response)
     const currentValid = await comparePassword(currentPassword as string, user.passwordHash);
     if (!currentValid) {
       return res.status(400).json({
-        error: { code: 'INVALID_CREDENTIALS', message: 'Current password is incorrect.' },
+        error: { code: 'VALIDATION_ERROR', message: 'Current password is incorrect.', fields: { currentPassword: 'Current password is incorrect.' } },
       });
     }
 
@@ -174,7 +174,7 @@ router.post('/change-password', requireAuth, async (req: Request, res: Response)
     const sameAsCurrent = await comparePassword(newPassword as string, user.passwordHash);
     if (sameAsCurrent) {
       return res.status(400).json({
-        error: { code: 'VALIDATION_ERROR', message: 'New password must differ from the current password.' },
+        error: { code: 'VALIDATION_ERROR', message: 'New password must differ from the current password.', fields: { newPassword: 'New password must differ from the current password.' } },
       });
     }
 

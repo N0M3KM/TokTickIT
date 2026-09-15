@@ -17,7 +17,6 @@ export interface Attachment {
 
 interface AttachmentSectionProps {
   ticketId: number;
-  requesterId: number;
   attachments: Attachment[];
   onAttachmentsChange: (updated: Attachment[]) => void;
 }
@@ -30,7 +29,7 @@ const MAX_ACTIVE    = 5;
 // Component
 // ---------------------------------------------------------------------------
 export default function AttachmentSection({
-  ticketId, requesterId, attachments, onAttachmentsChange,
+  ticketId, attachments, onAttachmentsChange,
 }: AttachmentSectionProps) {
   const fileInputRef  = useRef<HTMLInputElement>(null);
   const [uploading,   setUploading]   = useState(false);
@@ -64,7 +63,6 @@ export default function AttachmentSection({
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append('requesterId', String(requesterId));
       fd.append('file', file);
       const res = await fetch(`/api/tickets/${ticketId}/attachments`, { method: 'POST', body: fd });
       if (!res.ok) {
@@ -84,7 +82,7 @@ export default function AttachmentSection({
   // Download
   // ---------------------------------------------------------------------------
   function handleDownload(attachment: Attachment) {
-    const url = `/api/tickets/${ticketId}/attachments/${attachment.id}/download?requesterId=${requesterId}`;
+    const url = `/api/tickets/${ticketId}/attachments/${attachment.id}/download`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
@@ -98,7 +96,7 @@ export default function AttachmentSection({
       const res = await fetch(`/api/tickets/${ticketId}/attachments/${removeTarget.id}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId, removalReason: removalReason.trim() }),
+        body: JSON.stringify({ removalReason: removalReason.trim() }),
       });
       if (!res.ok) {
         const data = await res.json() as { error?: { message?: string } };

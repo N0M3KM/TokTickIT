@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRequester } from '../context/RequesterContext.js';
 import Badge, { type BadgeVariant } from '../components/Badge.js';
 import LoadingSpinner from '../components/LoadingSpinner.js';
 import EmptyState from '../components/EmptyState.js';
@@ -38,7 +37,6 @@ type SortOrder = 'asc' | 'desc';
 // Component
 // ---------------------------------------------------------------------------
 export default function MyTickets() {
-  const { selectedRequesterId } = useRequester();
   const navigate = useNavigate();
 
   const [tickets,    setTickets]    = useState<Ticket[]>([]);
@@ -65,12 +63,10 @@ export default function MyTickets() {
   // Fetch tickets
   // ---------------------------------------------------------------------------
   const fetchTickets = useCallback(async () => {
-    if (!selectedRequesterId) return;
     setLoading(true);
     setError('');
     try {
       const params = new URLSearchParams({
-        requesterId: String(selectedRequesterId),
         page:        String(page),
         pageSize:    String(pageSize),
         sort:        sortField,
@@ -91,7 +87,7 @@ export default function MyTickets() {
     } finally {
       setLoading(false);
     }
-  }, [selectedRequesterId, page, pageSize, sortField, sortOrder, search, categoryId, priority, status]);
+  }, [page, pageSize, sortField, sortOrder, search, categoryId, priority, status]);
 
   useEffect(() => { void fetchTickets(); }, [fetchTickets]);
 

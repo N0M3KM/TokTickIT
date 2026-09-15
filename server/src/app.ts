@@ -11,7 +11,7 @@ import relatedSystemsRouter from './routes/relatedSystems.js';
 import ticketsRouter from './routes/tickets.js';
 import attachmentsRouter from './routes/attachments.js';
 
-import { requireAuth } from './middleware/requireAuth.js';
+import { requireAuth, requireRole } from './middleware/requireAuth.js';
 import { requirePasswordChanged } from './middleware/requirePasswordChanged.js';
 
 // Ensure uploads directory exists at startup
@@ -39,8 +39,9 @@ app.use('/api/related-systems', relatedSystemsRouter);
 
 // ── Protected routes — require valid JWT + password already changed ──────────
 const protect = [requireAuth, requirePasswordChanged];
+const requesterProtect = [...protect, requireRole('REQUESTER')];
 
-app.use('/api/tickets',                      ...protect, ticketsRouter);
-app.use('/api/tickets/:id/attachments',      ...protect, attachmentsRouter);
+app.use('/api/tickets',                      ...requesterProtect, ticketsRouter);
+app.use('/api/tickets/:id/attachments',      ...requesterProtect, attachmentsRouter);
 
 export default app;
