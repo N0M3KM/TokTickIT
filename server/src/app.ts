@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import authRouter from './routes/auth.js';
 import categoriesRouter from './routes/categories.js';
 import requestersRouter from './routes/requesters.js';
+import queueRouter from './routes/queue.js';
 import relatedSystemsRouter from './routes/relatedSystems.js';
 import ticketsRouter from './routes/tickets.js';
 import attachmentsRouter from './routes/attachments.js';
@@ -43,5 +44,6 @@ const requesterProtect = [...protect, requireRole('REQUESTER')];
 
 app.use('/api/tickets',                      ...requesterProtect, ticketsRouter);
 app.use('/api/tickets/:id/attachments',      ...requesterProtect, attachmentsRouter);
+app.use('/api/queue',                         ...protect, requireRole('IT_STAFF', 'ADMINISTRATOR'), queueRouter);
 
 export default app;

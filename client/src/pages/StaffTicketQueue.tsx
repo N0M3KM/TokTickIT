@@ -1,0 +1,40 @@
+import { useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext.js';
+
+type Ticket = { id: number; ticketNumber: string; summary: string; categoryName: string; requestedPriority: string; itPriority: string; currentStatus: string; ticketOwner: { id: number; name: string } | null; createdAt: string; updatedAt: string };
+type Page = { page: number; pageSize: number; total: number; totalPages: number };
+const priorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
+const statuses = ['NEW', 'OPEN', 'IN_PROGRESS', 'WAITING_FOR_REQUESTER', 'RESOLVED', 'CLOSED', 'REOPENED', 'CANCELLED'];
+
+export default function StaffTicketQueue() {
+  const { user } = useAuth();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [page, setPage] = useState<Page>({ page: 1, pageSize: 10, total: 0, totalPages: 1 });
+  const [loading, setLoading] = useState(true); const [error, setError] = useState('');
+  const [search, setSearch] = useState(''); const [categoryId, setCategoryId] = useState(''); const [categories, setCategories] = useState<{ id: number; name: string }[]>([]);
+  const [requestedPriority, setRequestedPriority] = useState(''); const [itPriority, setItPriority] = useState(''); const [status, setStatus] = useState(''); const [ownerId, setOwnerId] = useState('');
+  const [sort, setSort] = useState<'ticketNumber' | 'createdAt' | 'updatedAt'>('createdAt'); const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+  const load = useCallback(async () => {
+    setLoading(true); setError('');
+    const query = new URLSearchParams({ page: String(page.page), pageSize: String(page.pageSize), sort, order });
+    if (search) query.set('search', search); if (categoryId) query.set('categoryId', categoryId); if (requestedPriority) query.set('requestedPriority', requestedPriority); if (itPriority) query.set('itPriority', itPriority); if (status) query.set('status', status); if (ownerId) query.set('ownerId', ownerId === 'me' ? String(user?.id) : ownerId);
+    try { const response = await fetch(`/api/queue?${query}`, { credentials: 'same-origin' }); if (!response.ok) throw new Error(); const body = await response.json() as { data: Ticket[]; pagination: Page }; setTickets(body.data); setPage(body.pagination); } catch { setError('Could not load the ticket queue. Please try again.'); } finally { setLoading(false); }
+  }, [page.page, page.pageSize, sort, order, search, categoryId, requestedPriority, itPriority, status, ownerId, user?.id]);
+  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { fetch('/api/categories').then((r) => r.ok ? r.json() : []).then(setCategories).catch(() => {}); }, []);
+  function clear() { setSearch(''); setCategoryId(''); setRequestedPriority(''); setItPriority(''); setStatus(''); setOwnerId(''); setPage((p) => ({ ...p, page: 1 })); }
+  function changeSort(field: typeof sort) { if (field === sort) setOrder((value) => value === 'asc' ? 'desc' : 'asc'); else { setSort(field); setOrder('desc'); } setPage((p) => ({ ...p, page: 1 })); }
+  const filter = { height: 40, border: '1px solid var(--color-editable-border)', borderRadius: 6, padding: '0 8px', background: '#fff' } as const;
+  return <section><div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}><div><h1 style={{ margin: 0 }}>My Queue</h1><p style={{ color: 'var(--color-text-secondary)' }}>View and prioritize all IT support requests.</p></div><button onClick={clear} style={button}>Clear Filters</button></div>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, padding: 16, background: '#fff', border: '1px solid var(--color-border)', borderRadius: 6 }}><input aria-label="Search queue" placeholder="Search ticket number or summary" value={search} onChange={(e) => { setSearch(e.target.value); setPage((p) => ({ ...p, page: 1 })); }} style={{ ...filter, minWidth: 230, flex: '1 1 230px' }} />
+      <select aria-label="Filter category" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPage((p) => ({ ...p, page: 1 })); }} style={filter}><option value="">All Categories</option>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+      <Select label="Requested priority" value={requestedPriority} onChange={setRequestedPriority} options={priorities} /><Select label="IT priority" value={itPriority} onChange={setItPriority} options={priorities} /><Select label="Current status" value={status} onChange={setStatus} options={statuses} />
+      <select aria-label="Filter owner" value={ownerId} onChange={(e) => { setOwnerId(e.target.value); setPage((p) => ({ ...p, page: 1 })); }} style={filter}><option value="">All Owners</option><option value="unassigned">Unassigned</option><option value="me">Me</option></select></div>
+    {loading ? <p role="status">Loading ticket queue...</p> : error ? <div role="alert"><p>{error}</p><button onClick={() => void load()} style={button}>Retry</button></div> : tickets.length === 0 ? <div><p>No tickets match the current filters.</p><button onClick={clear} style={button}>Clear Filters</button></div> : <><div className="queue-table"><table style={{ width: '100%', marginTop: 16, borderCollapse: 'collapse', background: '#fff' }}><thead><tr>{[['ticketNumber', 'Ticket No.'], ['createdAt', 'Created'], ['summary', 'Summary'], ['category', 'Category'], ['requested', 'Req. Priority'], ['it', 'IT Priority'], ['status', 'Status'], ['owner', 'Owner'], ['updatedAt', 'Updated']].map(([field, label]) => <th key={field} style={head}>{field === 'ticketNumber' || field === 'createdAt' || field === 'updatedAt' ? <button onClick={() => changeSort(field as typeof sort)} style={sortButton}>{label}{sort === field ? (order === 'asc' ? ' ↑' : ' ↓') : ''}</button> : label}</th>)}</tr></thead><tbody>{tickets.map((ticket) => <tr key={ticket.id}><td style={cell}>{ticket.ticketNumber}</td><td style={cell}>{formatDate(ticket.createdAt)}</td><td style={cell}>{ticket.summary}</td><td style={cell}>{ticket.categoryName}</td><td style={cell}>{ticket.requestedPriority}</td><td style={cell}>{ticket.itPriority}</td><td style={cell}>{ticket.currentStatus.replace(/_/g, ' ')}</td><td style={cell}>{ticket.ticketOwner?.name ?? 'Unassigned'}</td><td style={cell}>{formatDate(ticket.updatedAt)}</td></tr>)}</tbody></table></div><div style={{ marginTop: 16, display: 'flex', gap: 8, alignItems: 'center' }}><span>Showing {(page.page - 1) * page.pageSize + 1}–{Math.min(page.page * page.pageSize, page.total)} of {page.total} tickets</span><button disabled={page.page <= 1} onClick={() => setPage((p) => ({ ...p, page: p.page - 1 }))} style={button}>Previous</button><button disabled={page.page >= page.totalPages} onClick={() => setPage((p) => ({ ...p, page: p.page + 1 }))} style={button}>Next</button></div></>}</section>;
+}
+function Select({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: string[] }) { return <select aria-label={`Filter ${label}`} value={value} onChange={(e) => onChange(e.target.value)} style={{ height: 40, border: '1px solid var(--color-editable-border)', borderRadius: 6, padding: '0 8px' }}><option value="">All {label}s</option>{options.map((option) => <option key={option} value={option}>{option.replace(/_/g, ' ')}</option>)}</select>; }
+function formatDate(value: string) { return new Date(value).toLocaleDateString(); }
+const button: React.CSSProperties = { height: 36, border: '1px solid var(--color-primary)', borderRadius: 6, background: '#fff', color: 'var(--color-primary)', padding: '0 12px', cursor: 'pointer' };
+const head: React.CSSProperties = { textAlign: 'left', padding: 10, borderBottom: '1px solid var(--color-border)', whiteSpace: 'nowrap' };
+const cell: React.CSSProperties = { padding: 10, borderBottom: '1px solid var(--color-border)', verticalAlign: 'top' };
+const sortButton: React.CSSProperties = { background: 'none', border: 0, padding: 0, fontWeight: 700, cursor: 'pointer' };
