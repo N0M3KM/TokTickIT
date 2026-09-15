@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
+const BCRYPT_ROUNDS = 12;
 
 async function main() {
   console.log('Seeding database...');
@@ -47,34 +49,84 @@ async function main() {
   console.log(`  ✓ ${relatedSystemNames.length} related systems seeded`);
 
   // ------------------------------------------------------------------
-  // Active Development Requesters (≥4 required)
+  // Users — Lab 3 real authentication
+  //
+  // SECURITY NOTE: These credentials are for LOCAL DEVELOPMENT only.
+  // Do NOT use these passwords in any production environment.
+  //
+  // Seeded credentials:
+  //   Requesters (role=REQUESTER, mustChangePassword=true): Change@123
+  //   IT Staff   (role=IT_STAFF,  mustChangePassword=false): Staff@123!
+  //   Admin      (role=ADMINISTRATOR, mustChangePassword=false): Admin@123!
   // ------------------------------------------------------------------
-  const activeRequesters = [
-    { name: 'Somchai Jaidee',    email: 'somchai.j@example.com',   isActive: true },
-    { name: 'Nattaporn Srisuk',  email: 'nattaporn.s@example.com', isActive: true },
-    { name: 'Wiroj Tanaka',      email: 'wiroj.t@example.com',     isActive: true },
-    { name: 'Araya Phongphan',   email: 'araya.p@example.com',     isActive: true },
-  ] as const;
 
-  for (const requester of activeRequesters) {
-    await prisma.devRequester.upsert({
-      where: { email: requester.email },
-      update: { name: requester.name, isActive: requester.isActive },
-      create: requester,
+  const requesterHash = await bcrypt.hash('Change@123', BCRYPT_ROUNDS);
+  const staffHash     = await bcrypt.hash('Staff@123!', BCRYPT_ROUNDS);
+  const adminHash     = await bcrypt.hash('Admin@123!', BCRYPT_ROUNDS);
+
+  // Active Requesters (≥4)
+  const requesters = [
+    { name: 'Somchai Jaidee',   email: 'somchai.j@example.com',   isActive: true  },
+    { name: 'Nattaporn Srisuk', email: 'nattaporn.s@example.com', isActive: true  },
+    { name: 'Wiroj Tanaka',     email: 'wiroj.t@example.com',     isActive: true  },
+    { name: 'Araya Phongphan',  email: 'araya.p@example.com',     isActive: true  },
+    { name: 'Prayut Mahachai',  email: 'prayut.m@example.com',    isActive: false }, // inactive
+  ];
+
+  for (const r of requesters) {
+    await prisma.user.upsert({
+      where: { email: r.email },
+      update: { name: r.name, isActive: r.isActive, role: 'REQUESTER' },
+      create: {
+        name: r.name,
+        email: r.email,
+        passwordHash: requesterHash,
+        role: 'REQUESTER',
+        isActive: r.isActive,
+        mustChangePassword: true,
+      },
     });
   }
-  console.log(`  ✓ ${activeRequesters.length} active dev requesters seeded`);
+  console.log(`  ✓ ${requesters.length} requester accounts seeded (4 active, 1 inactive)`);
 
-  // ------------------------------------------------------------------
-  // Inactive Development Requester (exactly 1 required — BR-04, BR-05)
-  // Must NOT appear in the active requester dropdown.
-  // ------------------------------------------------------------------
-  await prisma.devRequester.upsert({
-    where: { email: 'prayut.m@example.com' },
-    update: { name: 'Prayut Mahachai', isActive: false },
-    create: { name: 'Prayut Mahachai', email: 'prayut.m@example.com', isActive: false },
+  // Active IT Staff (≥3)
+  const itStaff = [
+    { name: 'Michael Brown', email: 'michael.b@example.com', isActive: true  },
+    { name: 'Sarah Johnson', email: 'sarah.j@example.com',   isActive: true  },
+    { name: 'David Lee',     email: 'david.l@example.com',   isActive: true  },
+    { name: 'Kevin Patel',   email: 'kevin.p@example.com',   isActive: false }, // inactive
+  ];
+
+  for (const s of itStaff) {
+    await prisma.user.upsert({
+      where: { email: s.email },
+      update: { name: s.name, isActive: s.isActive, role: 'IT_STAFF' },
+      create: {
+        name: s.name,
+        email: s.email,
+        passwordHash: staffHash,
+        role: 'IT_STAFF',
+        isActive: s.isActive,
+        mustChangePassword: false,
+      },
+    });
+  }
+  console.log(`  ✓ ${itStaff.length} IT Staff accounts seeded (3 active, 1 inactive)`);
+
+  // Administrator (≥1 active)
+  await prisma.user.upsert({
+    where: { email: 'admin@example.com' },
+    update: { name: 'Admin User', isActive: true, role: 'ADMINISTRATOR' },
+    create: {
+      name: 'Admin User',
+      email: 'admin@example.com',
+      passwordHash: adminHash,
+      role: 'ADMINISTRATOR',
+      isActive: true,
+      mustChangePassword: false,
+    },
   });
-  console.log('  ✓ 1 inactive dev requester seeded (Prayut Mahachai)');
+  console.log('  ✓ 1 Administrator account seeded');
 
   console.log('Seeding complete.');
 }

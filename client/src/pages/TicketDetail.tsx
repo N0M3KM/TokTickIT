@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useRequester } from '../context/RequesterContext.js';
 import Badge, { type BadgeVariant } from '../components/Badge.js';
 import LoadingSpinner from '../components/LoadingSpinner.js';
 import ErrorState from '../components/ErrorState.js';
@@ -34,18 +33,17 @@ interface TicketDetail {
 export default function TicketDetail() {
   const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { selectedRequesterId } = useRequester();
 
   const [ticket,  setTicket]  = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<'not-found' | 'forbidden' | 'general' | null>(null);
 
   async function fetchTicket() {
-    if (!selectedRequesterId || !id) return;
+    if (!id) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/tickets/${id}?requesterId=${selectedRequesterId}`);
+      const res = await fetch(`/api/tickets/${id}`);
       if (res.status === 403) { setError('forbidden'); return; }
       if (res.status === 404) { setError('not-found'); return; }
       if (!res.ok)            { setError('general');   return; }
@@ -57,7 +55,7 @@ export default function TicketDetail() {
     }
   }
 
-  useEffect(() => { void fetchTicket(); }, [id, selectedRequesterId]);
+  useEffect(() => { void fetchTicket(); }, [id]);
 
   // ---------------------------------------------------------------------------
   // Render states
@@ -153,7 +151,6 @@ export default function TicketDetail() {
       <div style={card}>
         <AttachmentSection
           ticketId={ticket.id}
-          requesterId={selectedRequesterId!}
           attachments={ticket.attachments}
           onAttachmentsChange={(updated) => setTicket((t) => t ? { ...t, attachments: updated } : t)}
         />

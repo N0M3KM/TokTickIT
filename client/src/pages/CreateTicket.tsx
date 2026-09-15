@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRequester } from '../context/RequesterContext.js';
+import { useAuth } from '../context/AuthContext.js';
 import LoadingSpinner from '../components/LoadingSpinner.js';
 import ErrorState from '../components/ErrorState.js';
 
@@ -38,7 +38,7 @@ const PRIORITIES    = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
 // Component
 // ---------------------------------------------------------------------------
 export default function CreateTicket() {
-  const { selectedRequesterId, selectedRequesterName } = useRequester();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   // Reference data
@@ -141,7 +141,6 @@ export default function CreateTicket() {
 
     try {
       const body = {
-        requesterId:       selectedRequesterId,
         categoryId:        Number(values.categoryId),
         relatedSystemId:   values.relatedSystemId ? Number(values.relatedSystemId) : undefined,
         summary:           values.summary.trim(),
@@ -167,7 +166,6 @@ export default function CreateTicket() {
       // Upload staged attachments sequentially
       for (const { file } of staged) {
         const fd = new FormData();
-        fd.append('requesterId', String(selectedRequesterId));
         fd.append('file', file);
         const attachRes = await fetch(`/api/tickets/${ticket.id}/attachments`, {
           method: 'POST', body: fd,
@@ -322,7 +320,7 @@ export default function CreateTicket() {
           <div style={grid3}>
             <ReadOnly label="Ticket Number" value="(auto-generated)" />
             <ReadOnly label="Ticket Date"   value="(auto)" />
-            <ReadOnly label="Requester"     value={selectedRequesterName ?? ''} />
+            <ReadOnly label="Requester"     value={user?.name ?? ''} />
           </div>
         </div>
 

@@ -22,9 +22,10 @@ services:
       dockerfile: server/Dockerfile
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      PORT: 3000
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET}
     ports:
-      - "3000:3000"
+      - "3001:3001"
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,7 +35,7 @@ services:
       context: .
       dockerfile: client/Dockerfile
     environment:
-      API_PROXY_TARGET: http://server:3000
+      API_PROXY_TARGET: http://server:3001
     ports:
       - "5173:5173"
     depends_on:
