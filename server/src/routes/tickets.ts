@@ -8,7 +8,6 @@ import {
   validateDescription,
   validateRequestedPriority,
   validateCategoryId,
-  validateRequesterId,
   buildFieldsMap,
   type FieldError,
 } from '../lib/ticketValidation.js';
@@ -39,8 +38,7 @@ const TICKET_SELECT = {
   ticketDate: true,
   createdAt: true,
   updatedAt: true,
-  requester: { select: { name: true } },
-  category: { select: { name: true } },
+  requester: { select: { name: true } },  category: { select: { name: true } },
   relatedSystem: { select: { name: true } },
 } as const;
 
@@ -86,7 +84,10 @@ function formatTicket(t: {
 // ---------------------------------------------------------------------------
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { requesterId, categoryId, relatedSystemId, summary, description, requestedPriority } =
+    // BR-03: authenticated user identity determines ownership — ignore any client-supplied requesterId
+    const requesterId = req.user!.id;
+
+    const { categoryId, relatedSystemId, summary, description, requestedPriority } =
       req.body ?? {};
 
     // --- Collect all field validation errors at once (AC-23) ---
@@ -104,9 +105,6 @@ router.post('/', async (req: Request, res: Response) => {
     const categoryErr = validateCategoryId(categoryId);
     if (categoryErr) errors.push(categoryErr);
 
-    const requesterErr = validateRequesterId(requesterId);
-    if (requesterErr) errors.push(requesterErr);
-
     if (errors.length > 0) {
       return res.status(400).json({
         error: {
@@ -118,8 +116,8 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // --- DB existence checks ---
-    const requester = await prisma.devRequester.findFirst({
-      where: { id: Number(requesterId), isActive: true },
+    const requester = await prisma.user.findFirst({
+      where: { id: requesterId, isActive: true },
       select: { id: true, name: true },
     });
     if (!requester) {
@@ -211,20 +209,9 @@ router.post('/', async (req: Request, res: Response) => {
 // ---------------------------------------------------------------------------
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const { requesterId, search, categoryId, priority, status, sort, order, page, pageSize } =
-      req.query;
-
-    // requesterId is required
-    const requesterIdNum = Number(requesterId);
-    if (!requesterId || !Number.isInteger(requesterIdNum) || requesterIdNum < 1) {
-      return res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'requesterId is required and must be a positive integer.',
-          fields: { requesterId: 'requesterId is required.' },
-        },
-      });
-    }
+    // BR-03: use authenticated identity — ignore any client-supplied requesterId
+    const requesterIdNum = req.user!.id;
+    const { search, categoryId, priority, status, sort, order, page, pageSize } = req.query;
 
     // --- Pagination (BR-24: clamp to valid values) ---
     const validPageSizes = [10, 25, 50];
@@ -336,17 +323,8 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const ticketId = Number(req.params.id);
-    const requesterIdNum = Number(req.query.requesterId);
-
-    if (!Number.isInteger(requesterIdNum) || requesterIdNum < 1) {
-      return res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'requesterId is required.',
-          fields: { requesterId: 'requesterId is required.' },
-        },
-      });
-    }
+    // BR-03: ownership determined by JWT identity
+    const requesterIdNum = req.user!.id;
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
