@@ -7,6 +7,7 @@ COPY server/package.json server/package.json
 RUN npm ci
 
 COPY server server
+RUN npm run prisma:generate --workspace=server
 EXPOSE 3001
 CMD ["sh", "-c", "npx prisma migrate deploy --schema server/prisma/schema.prisma && npm run prisma:seed --workspace=server && npm run dev:server"]
 

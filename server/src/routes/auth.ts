@@ -1,5 +1,4 @@
 import { Router, Request, Response } from 'express';
-import jwt from 'jsonwebtoken';
 import { rateLimit } from 'express-rate-limit';
 import { prisma } from '../lib/prisma.js';
 import {
@@ -12,7 +11,6 @@ import {
   type JwtPayload,
 } from '../lib/auth.js';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js';
 
 const router = Router();
 
@@ -29,6 +27,7 @@ const loginRateLimit = rateLimit({
   limit: 10,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
+  skipSuccessfulRequests: true,
   message: { error: { code: 'TOO_MANY_REQUESTS', message: 'Too many sign-in attempts. Please try again later.' } },
 });
 
@@ -63,19 +62,16 @@ router.post('/login', loginRateLimit, async (req: Request, res: Response) => {
       });
     }
 
-    // Inactive account — 403 with safe message (BR-09)
+    const valid = await comparePassword(password, user.passwordHash);
+    if (!valid) return res.status(401).json({ error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' } });
+
+    // Only reveal inactive-account status after verifying the credentials.
     if (!user.isActive) {
       return res.status(403).json({
         error: { code: 'ACCOUNT_INACTIVE', message: 'This account has been deactivated. Please contact an administrator.' },
       });
     }
 
-    const valid = await comparePassword(password, user.passwordHash);
-    if (!valid) {
-      return res.status(401).json({
-        error: { code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.' },
-      });
-    }
 
     const token = signToken(user.id, user.role);
     res.cookie(COOKIE_NAME, token, COOKIE_OPTS);
@@ -141,7 +137,7 @@ router.post('/change-password', requireAuth, async (req: Request, res: Response)
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body ?? {};
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
+    if (typeof currentPassword !== 'string' || typeof newPassword !== 'string' || typeof confirmPassword !== 'string' || !currentPassword || !newPassword || !confirmPassword) {
       return res.status(400).json({
         error: { code: 'VALIDATION_ERROR', message: 'currentPassword, newPassword, and confirmPassword are required.' },
       });

@@ -9,7 +9,7 @@ export default function RequireAuth({ children, roles }: { children: React.React
     const returnTo = `${location.pathname}${location.search}`;
     return <Navigate to={`/login?redirectAfterLogin=${encodeURIComponent(returnTo)}`} replace state={{ from: returnTo }} />;
   }
-  if (user.mustChangePassword) return <Navigate to="/change-password" replace />;
+  if (user.mustChangePassword) return <Navigate to={`/change-password?redirectAfterLogin=${encodeURIComponent(location.pathname + location.search)}`} replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/forbidden" replace />;
   return <>{children}</>;
 }

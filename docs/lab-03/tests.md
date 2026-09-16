@@ -215,6 +215,17 @@ npx playwright test e2e/lab-03/
 
 ## 6. Final Results
 
+### Latest UI update verification
+
+- Client and server production builds: passed.
+- `client/src/lab-03`: 18 tests passed, including 7 dedicated Change Password tests (validation, visibility, mandatory/voluntary navigation, save, retry, and sign-out).
+- `server/tests/lab-03`: 59 tests passed.
+- `e2e/lab-03/zen-green.spec.ts`: passed in installed Chrome using mocked authentication; checked desktop/mobile screens, no mobile horizontal overflow, and primary button color `#006B3C`.
+- Screenshots: `artifacts/lab-03/zen-green-login.png`, `zen-green-change-password.png`, and `zen-green-change-password-mobile.png`.
+- Real API browser workflow: pending; Docker engine is unavailable/failing. Legacy Lab 2 client tests need authenticated fixture migration.
+
+These results are targeted checks, not a completed execution of every planned acceptance test below.
+
 | Level | Total Planned | Pass | Fail | Skip |
 |-------|--------------|------|------|------|
 | Unit | 8 | | | |

@@ -54,7 +54,7 @@ The system now needs real users with passwords. An Administrator manages user ac
 | FR-02 | The JWT shall be stored in an `httpOnly` cookie and expire after 8 hours; logout invalidates it server-side (blocklist) and clears the cookie. |
 | FR-03 | Every protected API endpoint shall verify the JWT and return 401 Unauthenticated if absent or invalid. |
 | FR-04 | A user whose `mustChangePassword` flag is true shall be redirected to the mandatory Change Password screen and cannot access any other route until a valid new password is saved. |
-| FR-05 | The application shell shall display the authenticated user's name and role badge; it shall show only the navigation links permitted for that role. |
+| FR-05 | The application shell shall display the authenticated user's name and role badge; it shall show only the navigation links permitted for that role; it shall provide a Logout action that clears the session and returns the user to the Login screen. |
 | FR-06 | The DevRequester selector and Change Requester action shall be removed entirely from the frontend. |
 | FR-07 | All Lab 2 Requester Ticket and Attachment endpoints shall use `req.user.id` (from JWT) as the requester identity; any client-supplied `requesterId` parameter shall be ignored. |
 | FR-08 | An authenticated Requester shall access Create Ticket, My Tickets, and Ticket Detail using their authenticated identity; ownership protection from Lab 2 is preserved. |

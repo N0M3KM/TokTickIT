@@ -20,11 +20,11 @@ export async function requirePasswordChanged(
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { mustChangePassword: true, isActive: true },
+      select: { mustChangePassword: true, isActive: true, role: true },
     });
 
     if (!user || !user.isActive) {
-      res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Account is inactive.' } });
+      res.status(401).json({ error: { code: 'UNAUTHENTICATED', message: 'Account is inactive.' } });
       return;
     }
 
@@ -38,6 +38,7 @@ export async function requirePasswordChanged(
       return;
     }
 
+    req.user.role = user.role;
     next();
   } catch {
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' } });

@@ -1,11 +1,14 @@
 # TokTickIT
 
-TokTickIT is an IT Service Desk application.
+TokTickIT is an IT Service Desk application built with React, TypeScript, Express, Prisma, and PostgreSQL.
 
-- **Lab 1** delivers a full-stack vertical slice: React frontend, Express REST API, Prisma ORM, and PostgreSQL database with category data.
-- **Lab 2** delivers the Requester-facing ticketing MVP: Development Requester Selection, Create Ticket, My Tickets, Ticket Detail, and Attachment lifecycle — all with a consistent Zen Green UI theme.
+## Lab 1 Working Result
 
----
+Open the frontend and select **Check System**.
+
+- `GET /api/health` → **System Status: Online**
+- `GET /api/categories` → four categories loaded from PostgreSQL
+- Loading and Offline states handled.
 
 ## Lab 2 Working Result
 
@@ -16,172 +19,170 @@ Select a Development Requester to simulate login, then:
 - **Ticket Detail** — read-only ticket fields; upload, download, and soft-remove attachments with a required reason.
 - **Zen Green UI** — consistent color tokens, responsive at desktop ≥ 992 px, tablet 768–991 px, and mobile < 768 px.
 
-## Lab 1 Working Result
+## Lab 3 overview
 
-Open the frontend and select **Check System**.
+Lab 3 replaces the Lab 2 Development Requester selector with real authentication. Open the application and **Sign In** with a seeded account or an account created by an administrator.
 
-- `GET /api/health` → **System Status: Online**
-- `GET /api/categories` → four categories loaded from PostgreSQL
-- Loading and Offline states handled.
+| Area | Features |
+| --- | --- |
+| Authentication | Email/password login, HTTP-only session cookie, session restoration, Sign Out, login throttling, role-based navigation, and safe return to the requested page after login. |
+| Change Password | Current password, new password, confirmation, show/hide controls, live complexity checklist, same-password and mismatch errors, saving/error feedback. Initial-password users must finish this step before opening application screens; refreshing preserves the session. Signed-in users can also change their password from the header. |
+| Requester | Create Ticket, search/filter/sort/paginate My Tickets, view owned ticket details, manage attachments, post public comments, and indicate that a problem appears resolved. |
+| IT Staff | Shared Ticket Queue, search/filter/sort/pagination, desktop table and smaller-screen cards, open ticket details, assign/reassign ownership, set IT Priority, follow permitted status transitions, post comments, and add private internal notes. |
+| Administrator | List/search/filter accounts, create and edit users, assign one role, activate/deactivate accounts, generate a temporary password, and enforce self-deactivation/last-administrator safeguards. |
+| Password recovery | **Forgot password?** explains administrator-assisted recovery. The administrator generates a new temporary password, shown once, which the user must change at the next login. |
+| Account creation | **Need an account?** explains how to contact the administrator. Public self-registration and reset-password emails are excluded by the Lab 3 sheet, section 4.2. |
+| Zen Green UI | Primary `#006B3C`, hover `#005530`, pale green `#EAF6EF`, page `#F5F7F6`, white surfaces, semantic role/status badges, responsive layouts, and visible keyboard focus. |
 
----
+Public comments are visible to the ticket requester and support team. Internal notes are restricted to IT Staff/Administrators. Requesters cannot formally resolve or close a ticket. The API enforces roles and ownership independently of the UI.
 
-## Technology Stack
+### Screens and role destinations
 
-| Area | Technology |
-|------|-----------|
-| Frontend | React 18, TypeScript, Vite, Bootstrap 5 |
-| Backend | Node.js, Express, TypeScript |
-| Database | PostgreSQL 16, Prisma ORM |
-| API style | REST |
-| Automated tests | Vitest, Supertest, React Testing Library |
-| E2E / Responsive | Playwright |
+| Route | Purpose |
+| --- | --- |
+| `/login` | Sign in |
+| `/forgot-password` | Administrator-assisted recovery instructions |
+| `/sign-up` | Account-request instructions; no public registration form |
+| `/change-password` | Mandatory initial-password change or voluntary password change |
+| `/tickets`, `/tickets/new` | Requester ticket list and creation |
+| `/tickets/:id` | Authorized ticket details, discussions, attachments, and workflow |
+| `/queue` | IT Staff/Administrator queue |
+| `/admin/users` | Administrator user management |
 
----
+After sign-in, Requesters go to My Tickets, IT Staff go to Ticket Queue, and Administrators go to User Management. Initial-password users go to Change Password first.
 
-## Prerequisites
+## Seeded accounts — local development only
 
-- Node.js 20 or later
-- Docker Desktop (recommended) **or** PostgreSQL 16 running locally
-- A database named `toktickit`
+These are the initial credentials in `server/prisma/seed.ts`. Do not use these sample passwords in production or commit real user passwords, session cookies, or JWT secrets.
 
----
+### Requester email addresses and passwords
+
+| Name | Email | Initial password | State |
+| --- | --- | --- | --- |
+| Somchai Jaidee | `somchai.j@example.com` | `Change@123` | Active; must change password on first login |
+| Nattaporn Srisuk | `nattaporn.s@example.com` | `Change@123` | Active; must change password on first login |
+| Wiroj Tanaka | `wiroj.t@example.com` | `Change@123` | Active; must change password on first login |
+| Araya Phongphan | `araya.p@example.com` | `Change@123` | Active; must change password on first login |
+| Prayut Mahachai | `prayut.m@example.com` | `Change@123` | Inactive; cannot sign in |
+
+### Staff and administrator credentials
+
+| Role | Email | Initial password | State |
+| --- | --- | --- | --- |
+| IT Staff | `michael.b@example.com` | `Staff@123!` | Active |
+| IT Staff | `sarah.j@example.com` | `Staff@123!` | Active |
+| IT Staff | `david.l@example.com` | `Staff@123!` | Active |
+| IT Staff | `kevin.p@example.com` | `Staff@123!` | Inactive |
+| Administrator | `admin@example.com` | `Admin@123!` | Active |
+
+**Already changed your password?** Use the password you chose. Re-running the seed preserves existing password hashes; it does not restore the initial passwords. An administrator can use **Generate Reset Password** on the user's edit form when recovery is needed. The generated password is shown once and is not saved in the README.
+
+### First-login walkthrough
+
+1. Sign in as an active requester using the initial credentials above.
+2. On **Change Your Password**, enter the current temporary password.
+3. Choose a different password containing at least 8 characters, uppercase, lowercase, a number, and a special character.
+4. Confirm it and select **Save Password and Continue**.
+5. Create or view your tickets. Use **Sign Out** in the header to end the session.
 
 ## Setup
 
-### Option A — Docker Compose (recommended)
+Requires Node.js 20+, Docker Desktop or PostgreSQL 16, and a configured database.
+
+Run commands from the repository containing this README, `client/`, and `server/`. The active development branch is `feature/17-lab3-e2e-and-release`; the earlier `feature/13-17` branch still contains the Lab 2 client.
+
+### Local API and client
 
 ```powershell
-# 1. Copy root env file
-Copy-Item .env.example .env
-
-# 2. Start all services (PostgreSQL + server + client)
-docker-compose up -d
-
-# 3. Run migrations and seed (first time only)
-npm run prisma:migrate --workspace=server
-npm run prisma:seed   --workspace=server
-```
-
-Open `http://localhost:5173`.
-
-### Option B — Local Node.js
-
-```powershell
-# 1. Install all dependencies
 npm install
-
-# 2. Configure server database connection
+# Copy only if the files do not already exist; preserve your current settings.
 Copy-Item server\.env.example server\.env
-# Edit server\.env → set DATABASE_URL to your PostgreSQL instance
+# Set DATABASE_URL and a random JWT_SECRET in server\.env.
+npm exec --workspace=server -- prisma migrate deploy
+npm run prisma:seed --workspace=server
 
-# 3. Run migrations and seed
-npm run prisma:migrate --workspace=server
-npm run prisma:seed   --workspace=server
-
-# 4. Start backend (terminal 1)
+# Terminal 1
 npm run dev:server
-
-# 5. Start frontend (terminal 2)
+# Terminal 2
 npm run dev:client
 ```
 
-Open `http://localhost:5173`.
+The API uses port **3001**. Open the URL printed by Vite (normally `http://localhost:5173`). Vite proxies `/api` to `http://localhost:3001`, so session cookies remain on the same browser origin.
 
----
+### All services in Docker
 
-## REST Endpoints
-
-### Reference data
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/health` | Health check |
-| GET | `/api/categories` | Active ticket categories |
-| GET | `/api/related-systems` | Active related systems |
-| GET | `/api/requesters` | Active Development Requesters |
-
-### Tickets
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/tickets` | Create a ticket (returns Ticket Number) |
-| GET | `/api/tickets?requesterId=&search=&page=` | List requester's tickets (paginated) |
-| GET | `/api/tickets/:id?requesterId=` | Get one owned ticket with attachments |
-
-### Attachments
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/tickets/:id/attachments` | Upload attachment (JPG/PNG/WEBP/PDF, max 5 MB) |
-| GET | `/api/tickets/:id/attachments/:aid/download` | Download active attachment |
-| DELETE | `/api/tickets/:id/attachments/:aid` | Soft-remove attachment (reason required) |
-
----
-
-## Automated Tests
-
-### Run all server tests (unit + API)
+Configure root `.env` with `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `JWT_SECRET` before starting Docker. Stop any host API already occupying port 3001.
 
 ```powershell
-cd server
-npm test
-# Expected: 13 test files, 113 tests passed
+docker compose up -d --build
 ```
 
-### Run all client tests (UI component + style)
+The server startup applies pending migrations and seeds development accounts. Existing database volumes are retained. The client proxies to `http://server:3001`.
+
+### Docker client with an API running on Windows
+
+For the mixed development setup, keep `npm run dev:server` running on Windows and use:
 
 ```powershell
-cd client
-npm test
-# Expected: 7 test files, 104 tests passed
+docker compose -p toktickit -f docker-compose.yml -f docker-compose.native-api.yml up -d --build --no-deps client
 ```
 
-### Run E2E and responsive tests (requires running app)
+This uses `http://host.docker.internal:3001` inside the client container. Open `http://localhost:5173/login`. The client Dockerfile forwards `--host 0.0.0.0` directly to Vite so the published port is reachable.
+
+### Still seeing the Development Requester selector?
+
+That screen belongs to the old Lab 2 client. Check `git branch --show-current`, start from the correct repository, and rebuild the Docker client with `--build`. Containers contain a snapshot of source code; switching branches alone does not update them. Refresh the browser after the rebuild.
+
+## API overview
+
+Except for health/login, endpoints require authentication; application endpoints also require completion of the initial-password change. The current-user endpoint remains accessible during that change so refresh can restore the session.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/health` | Public health check |
+| POST | `/api/auth/login` | Sign in; rate-limited failed attempts |
+| POST | `/api/auth/logout` | Invalidate token and clear cookie |
+| GET | `/api/auth/me` | Restore the signed-in identity |
+| POST | `/api/auth/change-password` | Validate and save a new password |
+| GET | `/api/categories`, `/api/related-systems` | Authenticated reference data |
+| GET / POST | `/api/tickets` | List own tickets / create as the authenticated requester |
+| GET | `/api/tickets/:id` | Authorized ticket detail |
+| POST / GET / DELETE | `/api/tickets/:id/attachments/...` | Upload, download, soft-remove attachments |
+| GET | `/api/queue`, `/api/queue/owners` | Staff queue / active eligible ticket owners |
+| PATCH | `/api/tickets/:id/owner`, `/it-priority`, `/status` | Staff workflow changes |
+| GET / POST | `/api/tickets/:id/comments`, `/notes` | Public comments / restricted internal notes |
+| POST | `/api/tickets/:id/requester-resolved` | Requester resolution indication |
+| GET / POST | `/api/users` | Administrator list / create users |
+| PATCH | `/api/users/:id` | Administrator edit account |
+| POST | `/api/users/:id/set-password` | Generate a one-time temporary password |
+
+`/api/requesters` is removed. Client-supplied `requesterId` no longer determines identity.
+
+## Verification
 
 ```powershell
-npx playwright test e2e/lab-02/
+npm run build
+npm run test --workspace=client -- src/lab-03
+npm run test --workspace=server -- tests/lab-03
+# Requires running app and a Playwright browser:
+npx playwright test e2e/lab-03/working-ui.spec.ts --project=desktop
 ```
 
-See [`docs/lab-02/tests.md`](docs/lab-02/tests.md) for the complete test inventory, AC traceability, and expected evidence.
+If Prisma generation fails because the running Windows API holds its DLL open, run `npx vitest run tests/lab-03` from `server/` using the existing generated client, or stop the API before regenerating.
 
----
+For an installed Chrome browser, set `$env:PLAYWRIGHT_CHANNEL='chrome'` before running Playwright. Use `PLAYWRIGHT_BASE_URL` to test a different client port. The workflow test creates a dedicated verification account and ticket and uses the real API.
 
-## Repository Structure
+**Verification status:** Client/server builds, 18 focused authentication UI tests (including 7 Change Password tests), and 59 Lab 3 server tests passed. The installed-Chrome Zen Green check passed for login and mandatory Change Password, including mobile overflow and computed button colors; this check mocks authentication and does not prove database integration. The real API browser workflow remains unverified because Docker's engine is failing to start/respond. Historical Lab 2 regression tests also need migration to authenticated fixtures. Do not treat these results as proof that every Lab 3 acceptance criterion has passed. See [Lab 3 tests](docs/lab-03/tests.md) for scope and remaining checks.
 
-```text
-TokTickIT/
-├── client/
-│   └── src/
-│       ├── components/        # AppShell, Badge, AttachmentSection, ConfirmDialog, etc.
-│       ├── context/           # RequesterContext (localStorage-backed dev requester)
-│       ├── lab-02/            # UI component and style tests
-│       ├── pages/             # CreateTicket, MyTickets, TicketDetail, RequesterSelector
-│       └── styles/            # tokens.css (Zen Green design tokens)
-├── docs/
-│   ├── lab-01/                # Lab 1 documentation
-│   └── lab-02/                # specification.md, tests.md, ui-spec.md, api-spec.md,
-│                              # reviewer.md, ai-use.md, instructions.md
-├── e2e/
-│   └── lab-02/                # Playwright E2E and responsive tests
-├── server/
-│   ├── prisma/                # schema.prisma, seed.ts, migrations/
-│   ├── src/
-│   │   ├── lib/               # ticketNumber, ticketValidation, attachmentValidation, upload
-│   │   └── routes/            # categories, requesters, relatedSystems, tickets, attachments
-│   └── tests/
-│       ├── lab-01/            # Lab 1 API tests
-│       └── lab-02/            # Lab 2 unit + API tests
-├── artifacts/lab-02/          # Screenshots from visual inspection
-├── playwright.config.ts
-├── .env.example
-├── .gitignore
-└── README.md
-```
+## Engineering documents and workflow
 
----
+- [Specification](docs/lab-03/specification.md)
+- [UI specification](docs/lab-03/ui-spec.md)
+- [API specification](docs/lab-03/api-spec.md)
+- [Tests and traceability](docs/lab-03/tests.md)
+- [Peer review](docs/lab-03/reviewer.md)
+- [AI use record](docs/lab-03/ai-use.md)
 
-## Git and Review Workflow
+Branch flow: `main → lab3-staging → feature/*`. Review feature branches before integration; this update does not merge or publish a release.
 
-- `main` — stable release branch (Lab 1 complete; Lab 2 pending release PR)
-- `lab2-staging` — Lab 2 integration branch; all feature PRs merge here first
-- `feature/N-description` — one branch per issue
-
-Do not commit passwords, `.env` files, or `node_modules`. Record peer-review evidence in [`docs/lab-02/reviewer.md`](docs/lab-02/reviewer.md).
+Lab 1 and Lab 2 documents remain under `docs/lab-01/` and `docs/lab-02/` as historical records. Lab 3 uses authenticated identity in place of their development-only selector.

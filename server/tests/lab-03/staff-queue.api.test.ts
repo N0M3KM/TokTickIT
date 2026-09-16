@@ -10,7 +10,7 @@ import app from '../../src/app.js';
 const staffCookie = () => `tkt_token=${signToken(6, 'IT_STAFF')}`;
 const ticket = { id: 42, ticketNumber: 'TKT-2026-000042', summary: 'Laptop battery drains quickly', requestedPriority: 'MEDIUM', itPriority: 'HIGH', currentStatus: 'IN_PROGRESS', createdAt: new Date('2026-09-01'), updatedAt: new Date('2026-09-02'), category: { name: 'Hardware' }, relatedSystem: { name: 'Corporate Laptop' }, requester: { id: 1, name: 'Somchai Jaidee' }, ticketOwner: { id: 6, name: 'Michael Brown' } };
 
-beforeEach(() => { process.env.JWT_SECRET = 'staff-queue-test-secret'; vi.clearAllMocks(); userFindUnique.mockResolvedValue({ isActive: true, mustChangePassword: false }); ticketCount.mockResolvedValue(1); ticketFindMany.mockResolvedValue([ticket]); });
+beforeEach(() => { process.env.JWT_SECRET = 'staff-queue-test-secret'; vi.clearAllMocks(); userFindUnique.mockResolvedValue({ isActive: true, mustChangePassword: false, role: 'IT_STAFF' }); ticketCount.mockResolvedValue(1); ticketFindMany.mockResolvedValue([ticket]); });
 
 describe('GET /api/queue', () => {
   it('returns queue data and pagination for IT Staff', async () => {
@@ -34,6 +34,7 @@ describe('GET /api/queue', () => {
   });
 
   it('rejects a Requester with 403', async () => {
+    userFindUnique.mockResolvedValue({ isActive: true, mustChangePassword: false, role: 'REQUESTER' });
     const response = await request(app).get('/api/queue').set('Cookie', `tkt_token=${signToken(1, 'REQUESTER')}`);
     expect(response.status).toBe(403);
     expect(response.body.error.code).toBe('FORBIDDEN');

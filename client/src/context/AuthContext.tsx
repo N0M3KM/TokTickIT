@@ -38,12 +38,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const response = await fetch('/api/auth/me', { credentials: 'same-origin' });
         if (response.ok && active) setUser(await response.json() as AuthUser);
+      } catch {
+        if (active) setUser(null);
       } finally {
         if (active) setLoading(false);
       }
     }
     void restoreSession();
     return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const expired = () => setUser(null);
+    const changeRequired = () => setUser((current) => current ? { ...current, mustChangePassword: true } : null);
+    window.addEventListener('session-expired', expired);
+    window.addEventListener('password-change-required', changeRequired);
+    return () => {
+      window.removeEventListener('session-expired', expired);
+      window.removeEventListener('password-change-required', changeRequired);
+    };
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
@@ -75,7 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    const response = await fetch('/api/auth/logout', { method: 'POST', credentials: 'same-origin' });
+    if (!response.ok && response.status !== 401) throw new Error('Could not sign out. Please try again.');
     setUser(null);
   }, []);
 

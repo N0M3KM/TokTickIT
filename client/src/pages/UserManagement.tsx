@@ -1,3 +1,4 @@
+import { apiFetch } from '../lib/api.js';
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { useAuth, type UserRole } from '../context/AuthContext.js';
 
@@ -24,7 +25,7 @@ export default function UserManagement() {
       const params = new URLSearchParams();
       if (search) params.set('search', search);
       if (role) params.set('role', role);
-      const response = await fetch(`/api/users?${params}`, { credentials: 'same-origin' });
+      const response = await apiFetch(`/api/users?${params}`, { credentials: 'same-origin' });
       if (!response.ok) throw new Error('Could not load users. Please try again.');
       setUsers(await response.json() as User[]);
     } catch (reason) { setError((reason as Error).message); }
@@ -38,7 +39,7 @@ export default function UserManagement() {
   async function save(event: FormEvent) {
     event.preventDefault(); setSaving(true); setError(''); setGeneratedPassword('');
     try {
-      const response = await fetch(editing ? `/api/users/${editing.id}` : '/api/users', {
+      const response = await apiFetch(editing ? `/api/users/${editing.id}` : '/api/users', {
         method: editing ? 'PATCH' : 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(draft),
       });
       const body = await response.json().catch(() => ({})) as PasswordResponse;
@@ -53,7 +54,7 @@ export default function UserManagement() {
     if (!editing) return;
     setSaving(true); setError(''); setGeneratedPassword('');
     try {
-      const response = await fetch(`/api/users/${editing.id}/set-password`, { method: 'POST', credentials: 'same-origin' });
+      const response = await apiFetch(`/api/users/${editing.id}/set-password`, { method: 'POST', credentials: 'same-origin' });
       const body = await response.json().catch(() => ({})) as PasswordResponse;
       if (!response.ok) throw new Error(body.error?.message ?? 'Could not reset the password.');
       setGeneratedPassword(body.initialPassword ?? ''); await load();
@@ -66,7 +67,7 @@ export default function UserManagement() {
     <header style={headerStyle}><div><h1 style={{ margin: 0 }}>Users</h1><p style={muted}>Manage TokTickIT user accounts.</p></div><button onClick={startCreate} style={primaryButton}>+ Create User</button></header>
     <div style={filterStyle}><input aria-label="Search users" placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.target.value)} style={inputStyle} /><select aria-label="Filter role" value={role} onChange={(e) => setRole(e.target.value)} style={inputStyle}><option value="">All roles</option><option value="REQUESTER">Requester</option><option value="IT_STAFF">IT Staff</option><option value="ADMINISTRATOR">Administrator</option></select></div>
     {error && <p role="alert" style={errorStyle}>{error}</p>}{generatedPassword && <PasswordNotice password={generatedPassword} onDismiss={() => setGeneratedPassword('')} />}
-    <div style={layoutStyle}><UserTable users={users} loading={loading} onEdit={startEdit} /><form onSubmit={save} style={panelStyle}>
+    <div className="user-layout"><UserTable users={users} loading={loading} onEdit={startEdit} /><form onSubmit={save} style={panelStyle}>
       <h2 style={{ marginTop: 0 }}>{editing ? `Edit ${editing.name}` : 'Create User'}</h2>
       <FormFields draft={draft} setDraft={setDraft} disableActive={Boolean(editingOwnAccount)} />
       {editingOwnAccount && <p style={muted}>You cannot deactivate your own account.</p>}

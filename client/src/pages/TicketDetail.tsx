@@ -1,3 +1,4 @@
+import { apiFetch } from '../lib/api.js';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Badge, { type BadgeVariant } from '../components/Badge.js';
@@ -5,6 +6,8 @@ import LoadingSpinner from '../components/LoadingSpinner.js';
 import ErrorState from '../components/ErrorState.js';
 import AttachmentSection, { type Attachment } from '../components/AttachmentSection.js';
 import { useAuth } from '../context/AuthContext.js';
+import TicketDiscussion from '../components/TicketDiscussion.js';
+import TicketOperations from '../components/TicketOperations.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -26,6 +29,9 @@ interface TicketDetail {
   createdAt: string;
   updatedAt: string;
   attachments: Attachment[];
+  itPriority: string;
+  ticketOwnerId: number | null;
+  requesterResolvedAt: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -42,11 +48,11 @@ export default function TicketDetail() {
   const [error,   setError]   = useState<'not-found' | 'forbidden' | 'general' | null>(null);
 
   async function fetchTicket() {
-    if (!id) return;
-    setLoading(true);
+    if (!id || !/^\d+$/.test(id)) { setError('not-found'); setLoading(false); return; }
+    setLoading(ticket === null);
     setError(null);
     try {
-      const res = await fetch(`/api/tickets/${id}`, { credentials: 'same-origin' });
+      const res = await apiFetch(`/api/tickets/${id}`, { credentials: 'same-origin' });
       if (res.status === 403) { setError('forbidden'); return; }
       if (res.status === 404) { setError('not-found'); return; }
       if (!res.ok)            { setError('general');   return; }
@@ -151,8 +157,12 @@ export default function TicketDetail() {
       </div>
 
       {/* Attachments */}
+      <TicketOperations ticket={ticket} onSaved={() => void fetchTicket()} />
+      <TicketDiscussion ticketId={ticket.id} />
+      {user?.role !== 'REQUESTER' && <TicketDiscussion ticketId={ticket.id} internal />}
       <div style={card}>
         <AttachmentSection
+          readOnly={user?.role !== 'REQUESTER'}
           ticketId={ticket.id}
           attachments={ticket.attachments}
           onAttachmentsChange={(updated) => setTicket((t) => t ? { ...t, attachments: updated } : t)}

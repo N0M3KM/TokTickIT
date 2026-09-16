@@ -38,6 +38,23 @@
   --color-success-text:   #166534;
   --color-success-bg:     #EAF6EF;
 
+  /* Lab 3 semantic badges, matching docs/lab-03/ui-spec.md section 2. */
+  --badge-requester-bg: #E0F2FE;
+  --badge-requester-text: #0369A1;
+  --badge-staff-bg: #EDE9FE;
+  --badge-staff-text: #5B21B6;
+  --badge-admin-bg: #FEF3C7;
+  --badge-admin-text: #92400E;
+  --badge-open-bg: #D1FAE5;
+  --badge-open-text: #065F46;
+  --badge-progress-bg: #DBEAFE;
+  --badge-progress-text: #1D4ED8;
+  --badge-closed-bg: #F3F4F6;
+  --badge-closed-text: #374151;
+  --badge-reopened-bg: #FEE2E2;
+  --badge-reopened-text: #991B1B;
+  --badge-cancelled-text: #9CA3AF;
+
   /* ----- Spacing ----- */
   --space-xs:   4px;
   --space-sm:   8px;

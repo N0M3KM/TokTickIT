@@ -36,6 +36,10 @@ const TICKET_SELECT = {
   description: true,
   requestedPriority: true,
   currentStatus: true,
+  itPriority: true,
+  ticketOwnerId: true,
+  requesterResolvedAt: true,
+  ticketOwner: { select: { id: true, name: true } },
   ticketDate: true,
   createdAt: true,
   updatedAt: true,
@@ -54,6 +58,10 @@ function formatTicket(t: {
   description: string;
   requestedPriority: Priority;
   currentStatus: string;
+  itPriority: Priority;
+  ticketOwnerId: number | null;
+  requesterResolvedAt: Date | null;
+  ticketOwner: { id: number; name: string } | null;
   ticketDate: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -74,6 +82,10 @@ function formatTicket(t: {
     description: t.description,
     requestedPriority: t.requestedPriority,
     currentStatus: t.currentStatus,
+    itPriority: t.itPriority,
+    ticketOwnerId: t.ticketOwnerId,
+    ticketOwner: t.ticketOwner,
+    requesterResolvedAt: t.requesterResolvedAt,
     ticketDate: t.ticketDate,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
@@ -175,6 +187,7 @@ router.post('/', requireRole('REQUESTER'), async (req: Request, res: Response) =
         summary: trimField(summary),
         description: trimField(description),
         requestedPriority: requestedPriority as Priority,
+        itPriority: requestedPriority as Priority,
         currentStatus: 'NEW',
         ticketDate: new Date(),
       },
@@ -324,6 +337,7 @@ router.get('/', requireRole('REQUESTER'), async (req: Request, res: Response) =>
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const ticketId = Number(req.params.id);
+    if (!Number.isSafeInteger(ticketId) || ticketId < 1) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found.' } });
     // BR-03: ownership determined by JWT identity
     const requesterIdNum = req.user!.id;
 
