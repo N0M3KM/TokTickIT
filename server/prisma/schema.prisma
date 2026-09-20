@@ -20,10 +20,23 @@ enum Priority {
 
 enum TicketStatus {
   NEW
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_REQUESTER
+  RESOLVED
+  CLOSED
+  REOPENED
+  CANCELLED
+}
+
+enum UserRole {
+  REQUESTER
+  IT_STAFF
+  ADMINISTRATOR
 }
 
 // ---------------------------------------------------------------------------
-// Reference tables
+// Reference tables (unchanged from Lab 2)
 // ---------------------------------------------------------------------------
 
 model Category {
@@ -44,74 +57,124 @@ model RelatedSystem {
 }
 
 // ---------------------------------------------------------------------------
-// Development Requester (Lab 2 testing mechanism — not real authentication)
-// In Lab 3 this is replaced by a proper User model with authentication.
-// The requesterId FK on Ticket will migrate cleanly (BR-27).
+// User — replaces DevRequester from Lab 2 (BR-24, BR-25)
+// Passwords hashed with bcrypt (cost 12); never stored in plaintext.
 // ---------------------------------------------------------------------------
 
-model DevRequester {
-  id        Int      @id @default(autoincrement())
-  name      String
-  email     String   @unique
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model User {
+  id                 Int      @id @default(autoincrement())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  role               UserRole
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  tickets Ticket[]
+  // Relations
+  submittedTickets   Ticket[]        @relation("TicketRequester")
+  ownedTickets       Ticket[]        @relation("TicketOwner")
+  publicComments     PublicComment[]
+  internalNotes      InternalNote[]
 
+  @@index([email])
+  @@index([role])
   @@index([isActive])
 }
 
 // ---------------------------------------------------------------------------
-// Ticket
+// Ticket — updated for Lab 3 (requesterId now → User; new fields added)
 // ---------------------------------------------------------------------------
 
 model Ticket {
-  id                Int          @id @default(autoincrement())
-  ticketNumber      String       @unique
-  requesterId       Int
-  categoryId        Int
-  relatedSystemId   Int?
-  summary           String
-  description       String
-  requestedPriority Priority     @default(MEDIUM)
-  currentStatus     TicketStatus @default(NEW)
-  ticketDate        DateTime     @default(now())
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  id                   Int          @id @default(autoincrement())
+  ticketNumber         String       @unique
+  requesterId          Int
+  ticketOwnerId        Int?
+  categoryId           Int
+  relatedSystemId      Int?
+  summary              String
+  description          String
+  requestedPriority    Priority     @default(MEDIUM)
+  itPriority           Priority     @default(MEDIUM)
+  currentStatus        TicketStatus @default(NEW)
+  requesterResolvedAt  DateTime?
+  ticketDate           DateTime     @default(now())
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
 
-  requester     DevRequester   @relation(fields: [requesterId], references: [id])
-  category      Category       @relation(fields: [categoryId], references: [id])
-  relatedSystem RelatedSystem? @relation(fields: [relatedSystemId], references: [id])
-  attachments   Attachment[]
+  requester      User           @relation("TicketRequester", fields: [requesterId],   references: [id])
+  ticketOwner    User?          @relation("TicketOwner",     fields: [ticketOwnerId], references: [id])
+  category       Category       @relation(fields: [categoryId],     references: [id])
+  relatedSystem  RelatedSystem? @relation(fields: [relatedSystemId], references: [id])
+  attachments    Attachment[]
+  publicComments PublicComment[]
+  internalNotes  InternalNote[]
 
   @@index([requesterId])
+  @@index([ticketOwnerId])
   @@index([ticketNumber])
   @@index([currentStatus])
   @@index([requestedPriority])
+  @@index([itPriority])
   @@index([categoryId])
   @@index([createdAt])
 }
 
 // ---------------------------------------------------------------------------
-// Attachment
+// Attachment (unchanged from Lab 2)
 // ---------------------------------------------------------------------------
 
 model Attachment {
-  id                Int       @id @default(autoincrement())
-  ticketId          Int
-  originalFilename  String
-  storageFilename   String    @unique
-  mimeType          String
-  sizeBytes         Int
-  uploadedAt        DateTime  @default(now())
-  removedAt         DateTime?
-  removalReason     String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id               Int       @id @default(autoincrement())
+  ticketId         Int
+  originalFilename String
+  storageFilename  String    @unique
+  mimeType         String
+  sizeBytes        Int
+  uploadedAt       DateTime  @default(now())
+  removedAt        DateTime?
+  removalReason    String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
   ticket Ticket @relation(fields: [ticketId], references: [id])
 
   @@index([ticketId])
   @@index([removedAt])
+}
+
+// ---------------------------------------------------------------------------
+// PublicComment — visible to Requester, IT Staff, Administrator (BR-04)
+// ---------------------------------------------------------------------------
+
+model PublicComment {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId])
+}
+
+// ---------------------------------------------------------------------------
+// InternalNote — visible only to IT Staff and Administrator (BR-04)
+// ---------------------------------------------------------------------------
+
+model InternalNote {
+  id        Int      @id @default(autoincrement())
+  ticketId  Int
+  authorId  Int
+  content   String
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id])
+  author User   @relation(fields: [authorId], references: [id])
+
+  @@index([ticketId])
 }

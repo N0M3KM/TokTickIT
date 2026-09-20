@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { Priority, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
+import { requireRole } from '../middleware/requireAuth.js';
 import { generateTicketNumber } from '../lib/ticketNumber.js';
 import {
   trimField,
@@ -8,7 +9,6 @@ import {
   validateDescription,
   validateRequestedPriority,
   validateCategoryId,
-  validateRequesterId,
   buildFieldsMap,
   type FieldError,
 } from '../lib/ticketValidation.js';
@@ -36,11 +36,14 @@ const TICKET_SELECT = {
   description: true,
   requestedPriority: true,
   currentStatus: true,
+  itPriority: true,
+  ticketOwnerId: true,
+  requesterResolvedAt: true,
+  ticketOwner: { select: { id: true, name: true } },
   ticketDate: true,
   createdAt: true,
   updatedAt: true,
-  requester: { select: { name: true } },
-  category: { select: { name: true } },
+  requester: { select: { name: true } },  category: { select: { name: true } },
   relatedSystem: { select: { name: true } },
 } as const;
 
@@ -55,6 +58,10 @@ function formatTicket(t: {
   description: string;
   requestedPriority: Priority;
   currentStatus: string;
+  itPriority: Priority;
+  ticketOwnerId: number | null;
+  requesterResolvedAt: Date | null;
+  ticketOwner: { id: number; name: string } | null;
   ticketDate: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -75,6 +82,10 @@ function formatTicket(t: {
     description: t.description,
     requestedPriority: t.requestedPriority,
     currentStatus: t.currentStatus,
+    itPriority: t.itPriority,
+    ticketOwnerId: t.ticketOwnerId,
+    ticketOwner: t.ticketOwner,
+    requesterResolvedAt: t.requesterResolvedAt,
     ticketDate: t.ticketDate,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
@@ -84,9 +95,12 @@ function formatTicket(t: {
 // ---------------------------------------------------------------------------
 // POST /api/tickets — Create a ticket (api-spec.md §3.1)
 // ---------------------------------------------------------------------------
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', requireRole('REQUESTER'), async (req: Request, res: Response) => {
   try {
-    const { requesterId, categoryId, relatedSystemId, summary, description, requestedPriority } =
+    // BR-03: authenticated user identity determines ownership — ignore any client-supplied requesterId
+    const requesterId = req.user!.id;
+
+    const { categoryId, relatedSystemId, summary, description, requestedPriority } =
       req.body ?? {};
 
     // --- Collect all field validation errors at once (AC-23) ---
@@ -104,9 +118,6 @@ router.post('/', async (req: Request, res: Response) => {
     const categoryErr = validateCategoryId(categoryId);
     if (categoryErr) errors.push(categoryErr);
 
-    const requesterErr = validateRequesterId(requesterId);
-    if (requesterErr) errors.push(requesterErr);
-
     if (errors.length > 0) {
       return res.status(400).json({
         error: {
@@ -118,8 +129,8 @@ router.post('/', async (req: Request, res: Response) => {
     }
 
     // --- DB existence checks ---
-    const requester = await prisma.devRequester.findFirst({
-      where: { id: Number(requesterId), isActive: true },
+    const requester = await prisma.user.findFirst({
+      where: { id: requesterId, isActive: true },
       select: { id: true, name: true },
     });
     if (!requester) {
@@ -176,6 +187,7 @@ router.post('/', async (req: Request, res: Response) => {
         summary: trimField(summary),
         description: trimField(description),
         requestedPriority: requestedPriority as Priority,
+        itPriority: requestedPriority as Priority,
         currentStatus: 'NEW',
         ticketDate: new Date(),
       },
@@ -209,22 +221,11 @@ router.post('/', async (req: Request, res: Response) => {
 // GET /api/tickets — List requester's tickets with search/filter/sort/page
 // api-spec.md §3.2, §8, §9
 // ---------------------------------------------------------------------------
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', requireRole('REQUESTER'), async (req: Request, res: Response) => {
   try {
-    const { requesterId, search, categoryId, priority, status, sort, order, page, pageSize } =
-      req.query;
-
-    // requesterId is required
-    const requesterIdNum = Number(requesterId);
-    if (!requesterId || !Number.isInteger(requesterIdNum) || requesterIdNum < 1) {
-      return res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'requesterId is required and must be a positive integer.',
-          fields: { requesterId: 'requesterId is required.' },
-        },
-      });
-    }
+    // BR-03: use authenticated identity — ignore any client-supplied requesterId
+    const requesterIdNum = req.user!.id;
+    const { search, categoryId, priority, status, sort, order, page, pageSize } = req.query;
 
     // --- Pagination (BR-24: clamp to valid values) ---
     const validPageSizes = [10, 25, 50];
@@ -336,17 +337,9 @@ router.get('/', async (req: Request, res: Response) => {
 router.get('/:id', async (req: Request, res: Response) => {
   try {
     const ticketId = Number(req.params.id);
-    const requesterIdNum = Number(req.query.requesterId);
-
-    if (!Number.isInteger(requesterIdNum) || requesterIdNum < 1) {
-      return res.status(400).json({
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'requesterId is required.',
-          fields: { requesterId: 'requesterId is required.' },
-        },
-      });
-    }
+    if (!Number.isSafeInteger(ticketId) || ticketId < 1) return res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Ticket not found.' } });
+    // BR-03: ownership determined by JWT identity
+    const requesterIdNum = req.user!.id;
 
     const ticket = await prisma.ticket.findUnique({
       where: { id: ticketId },
@@ -375,7 +368,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 
     // Ownership check — BR-07
-    if (ticket.requesterId !== requesterIdNum) {
+    if (req.user!.role === 'REQUESTER' && ticket.requesterId !== requesterIdNum) {
       return res.status(403).json({
         error: { code: 'FORBIDDEN', message: 'You do not have permission to view this ticket.' },
       });

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
+import { UserRole } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { upload } from '../lib/upload.js';
 import {
@@ -49,23 +50,13 @@ function formatAttachment(a: {
   };
 }
 
-/** Resolves and validates ownership of the parent ticket. */
+/** Resolves and validates ownership of the parent ticket using authenticated identity. */
 async function resolveTicket(
   res: Response,
   ticketId: number,
-  requesterId: number,
+  userId: number,
+  role: UserRole,
 ): Promise<{ id: number; requesterId: number } | null> {
-  if (!Number.isInteger(requesterId) || requesterId < 1) {
-    res.status(400).json({
-      error: {
-        code: 'VALIDATION_ERROR',
-        message: 'requesterId is required.',
-        fields: { requesterId: 'requesterId is required.' },
-      },
-    });
-    return null;
-  }
-
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
     select: { id: true, requesterId: true },
@@ -76,7 +67,8 @@ async function resolveTicket(
     return null;
   }
 
-  if (ticket.requesterId !== requesterId) {
+  // BR-03: ownership check uses authenticated identity
+  if (role === 'REQUESTER' && ticket.requesterId !== userId) {
     res.status(403).json({
       error: { code: 'FORBIDDEN', message: 'You do not have permission to access this ticket.' },
     });
@@ -117,9 +109,13 @@ router.post(
   async (req: Request, res: Response) => {
     try {
       const ticketId = Number(req.params.id);
-      const requesterId = Number(req.body.requesterId);
+      // BR-03: use authenticated identity
+      const userId = req.user!.id;
 
-      const ticket = await resolveTicket(res, ticketId, requesterId);
+      if (req.user!.role !== 'REQUESTER') {
+        return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'You do not have permission to modify attachments.' } });
+      }
+      const ticket = await resolveTicket(res, ticketId, userId, req.user!.role);
       if (!ticket) return;
 
       // No file provided
@@ -189,9 +185,10 @@ router.get('/:attachmentId/download', async (req: Request, res: Response) => {
   try {
     const ticketId = Number(req.params.id);
     const attachmentId = Number(req.params.attachmentId);
-    const requesterId = Number(req.query.requesterId);
+    // BR-03: use authenticated identity
+    const userId = req.user!.id;
 
-    const ticket = await resolveTicket(res, ticketId, requesterId);
+    const ticket = await resolveTicket(res, ticketId, userId, req.user!.role);
     if (!ticket) return;
 
     const attachment = await prisma.attachment.findFirst({
@@ -236,9 +233,13 @@ router.delete('/:attachmentId', async (req: Request, res: Response) => {
   try {
     const ticketId = Number(req.params.id);
     const attachmentId = Number(req.params.attachmentId);
-    const requesterId = Number(req.body.requesterId);
+    // BR-03: use authenticated identity
+    const userId = req.user!.id;
 
-    const ticket = await resolveTicket(res, ticketId, requesterId);
+    if (req.user!.role !== 'REQUESTER') {
+      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'You do not have permission to modify attachments.' } });
+    }
+    const ticket = await resolveTicket(res, ticketId, userId, req.user!.role);
     if (!ticket) return;
 
     // Validate removalReason (BR-18)

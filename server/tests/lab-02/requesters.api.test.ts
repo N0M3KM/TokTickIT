@@ -3,13 +3,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // ---------------------------------------------------------------------------
 // Hoist mocks before any imports so vi.mock hoisting works correctly in ESM
 // ---------------------------------------------------------------------------
-const { devRequesterFindMany } = vi.hoisted(() => ({
-  devRequesterFindMany: vi.fn(),
+const { userFindMany } = vi.hoisted(() => ({
+  userFindMany: vi.fn(),
 }));
 
 vi.mock('../../src/lib/prisma.js', () => ({
   prisma: {
-    devRequester: { findMany: devRequesterFindMany },
+    user: { findMany: userFindMany },
   },
 }));
 
@@ -38,7 +38,7 @@ describe('GET /api/requesters', () => {
   // -------------------------------------------------------------------------
   describe('API-29 — active requesters returned', () => {
     beforeEach(() => {
-      devRequesterFindMany.mockResolvedValue(activeRequesters);
+      userFindMany.mockResolvedValue(activeRequesters);
     });
 
     it('returns 200 with an array of active requesters', async () => {
@@ -52,8 +52,8 @@ describe('GET /api/requesters', () => {
     it('calls Prisma with isActive:true and name asc order', async () => {
       await request(app).get('/api/requesters');
 
-      expect(devRequesterFindMany).toHaveBeenCalledWith({
-        where: { isActive: true },
+      expect(userFindMany).toHaveBeenCalledWith({
+        where: { isActive: true, role: 'REQUESTER' },
         select: { id: true, name: true, email: true },
         orderBy: { name: 'asc' },
       });
@@ -77,7 +77,7 @@ describe('GET /api/requesters', () => {
   describe('API-30 — inactive requester excluded', () => {
     beforeEach(() => {
       // Prisma honours the where:isActive:true filter — inactive never returned
-      devRequesterFindMany.mockResolvedValue(activeRequesters);
+      userFindMany.mockResolvedValue(activeRequesters);
     });
 
     it('does not include the inactive requester in the response', async () => {
@@ -93,7 +93,7 @@ describe('GET /api/requesters', () => {
   // -------------------------------------------------------------------------
   describe('empty active requester list', () => {
     beforeEach(() => {
-      devRequesterFindMany.mockResolvedValue([]);
+      userFindMany.mockResolvedValue([]);
     });
 
     it('returns 200 with an empty array when no active requesters exist', async () => {
@@ -109,7 +109,7 @@ describe('GET /api/requesters', () => {
   // -------------------------------------------------------------------------
   describe('server error handling', () => {
     beforeEach(() => {
-      devRequesterFindMany.mockRejectedValue(new Error('DB connection lost'));
+      userFindMany.mockRejectedValue(new Error('DB connection lost'));
     });
 
     it('returns 500 with a safe INTERNAL_ERROR code', async () => {

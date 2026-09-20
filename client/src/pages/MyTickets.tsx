@@ -1,6 +1,6 @@
+import { apiFetch } from '../lib/api.js';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useRequester } from '../context/RequesterContext.js';
 import Badge, { type BadgeVariant } from '../components/Badge.js';
 import LoadingSpinner from '../components/LoadingSpinner.js';
 import EmptyState from '../components/EmptyState.js';
@@ -38,7 +38,6 @@ type SortOrder = 'asc' | 'desc';
 // Component
 // ---------------------------------------------------------------------------
 export default function MyTickets() {
-  const { selectedRequesterId } = useRequester();
   const navigate = useNavigate();
 
   const [tickets,    setTickets]    = useState<Ticket[]>([]);
@@ -65,12 +64,10 @@ export default function MyTickets() {
   // Fetch tickets
   // ---------------------------------------------------------------------------
   const fetchTickets = useCallback(async () => {
-    if (!selectedRequesterId) return;
     setLoading(true);
     setError('');
     try {
       const params = new URLSearchParams({
-        requesterId: String(selectedRequesterId),
         page:        String(page),
         pageSize:    String(pageSize),
         sort:        sortField,
@@ -81,7 +78,17 @@ export default function MyTickets() {
       if (priority)   params.set('priority',   priority);
       if (status)     params.set('status',     status);
 
-      const res = await fetch(`/api/tickets?${params.toString()}`);
+      const res = await apiFetch(`/api/tickets?${params.toString()}`, { credentials: 'same-origin' });
+      if (res.status === 401) {
+        return;
+      }
+      if (res.status === 403) {
+        const body = await res.json().catch(() => null) as { error?: { code?: string } } | null;
+        if (body?.error?.code === 'PASSWORD_CHANGE_REQUIRED') {
+          navigate('/change-password', { replace: true });
+          return;
+        }
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json() as { data: Ticket[]; pagination: PaginationMeta };
       setTickets(data.data);
@@ -91,14 +98,14 @@ export default function MyTickets() {
     } finally {
       setLoading(false);
     }
-  }, [selectedRequesterId, page, pageSize, sortField, sortOrder, search, categoryId, priority, status]);
+  }, [page, pageSize, sortField, sortOrder, search, categoryId, priority, status, navigate]);
 
   useEffect(() => { void fetchTickets(); }, [fetchTickets]);
 
   // Load categories for filter dropdown
   useEffect(() => {
-    fetch('/api/categories')
-      .then((r) => r.json() as Promise<Category[]>)
+    apiFetch('/api/categories', { credentials: 'same-origin' })
+      .then((r) => r.ok ? r.json() as Promise<Category[]> : [])
       .then(setCategories)
       .catch(() => {});
   }, []);

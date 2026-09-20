@@ -5,15 +5,15 @@ const router = Router();
 
 /**
  * GET /api/requesters
- * Returns only active DevRequesters sorted by name ascending.
- * Inactive requesters (isActive = false) are never included — BR-04, BR-05.
+ * Compatibility reference-data endpoint for active Requester users.
+ * Inactive users are never included.
  * Returns [] (not 404) when no active requesters exist.
  * api-spec.md §2.1
  */
 router.get('/', async (_req, res) => {
   try {
-    const requesters = await prisma.devRequester.findMany({
-      where: { isActive: true },
+    const requesters = await prisma.user.findMany({
+      where: { isActive: true, role: 'REQUESTER' },
       select: { id: true, name: true, email: true },
       orderBy: { name: 'asc' },
     });

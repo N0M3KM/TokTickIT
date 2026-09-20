@@ -1,3 +1,4 @@
+import { apiFetch } from '../lib/api.js';
 import React, { useRef, useState } from 'react';
 import Badge from './Badge.js';
 import ConfirmDialog from './ConfirmDialog.js';
@@ -17,9 +18,9 @@ export interface Attachment {
 
 interface AttachmentSectionProps {
   ticketId: number;
-  requesterId: number;
   attachments: Attachment[];
   onAttachmentsChange: (updated: Attachment[]) => void;
+  readOnly?: boolean;
 }
 
 const ALLOWED_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'application/pdf']);
@@ -30,7 +31,7 @@ const MAX_ACTIVE    = 5;
 // Component
 // ---------------------------------------------------------------------------
 export default function AttachmentSection({
-  ticketId, requesterId, attachments, onAttachmentsChange,
+  ticketId, attachments, onAttachmentsChange, readOnly = false,
 }: AttachmentSectionProps) {
   const fileInputRef  = useRef<HTMLInputElement>(null);
   const [uploading,   setUploading]   = useState(false);
@@ -64,9 +65,8 @@ export default function AttachmentSection({
     setUploading(true);
     try {
       const fd = new FormData();
-      fd.append('requesterId', String(requesterId));
       fd.append('file', file);
-      const res = await fetch(`/api/tickets/${ticketId}/attachments`, { method: 'POST', body: fd });
+      const res = await apiFetch(`/api/tickets/${ticketId}/attachments`, { method: 'POST', credentials: 'same-origin', body: fd });
       if (!res.ok) {
         const data = await res.json() as { error?: { message?: string } };
         throw new Error(data.error?.message ?? 'Upload failed.');
@@ -84,7 +84,7 @@ export default function AttachmentSection({
   // Download
   // ---------------------------------------------------------------------------
   function handleDownload(attachment: Attachment) {
-    const url = `/api/tickets/${ticketId}/attachments/${attachment.id}/download?requesterId=${requesterId}`;
+    const url = `/api/tickets/${ticketId}/attachments/${attachment.id}/download`;
     window.open(url, '_blank', 'noopener,noreferrer');
   }
 
@@ -95,10 +95,11 @@ export default function AttachmentSection({
     if (!removeTarget || !removalReason.trim()) return;
     setRemoveError('');
     try {
-      const res = await fetch(`/api/tickets/${ticketId}/attachments/${removeTarget.id}`, {
+      const res = await apiFetch(`/api/tickets/${ticketId}/attachments/${removeTarget.id}`, {
         method: 'DELETE',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requesterId, removalReason: removalReason.trim() }),
+        body: JSON.stringify({ removalReason: removalReason.trim() }),
       });
       if (!res.ok) {
         const data = await res.json() as { error?: { message?: string } };
@@ -122,7 +123,7 @@ export default function AttachmentSection({
         <h3 id="attachments-heading" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
           Attachments ({active.length})
         </h3>
-        <button
+        {!readOnly && <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           disabled={atLimit || uploading}
@@ -142,7 +143,7 @@ export default function AttachmentSection({
           }}
         >
           + Add Attachment
-        </button>
+        </button>}
         <input
           ref={fileInputRef}
           type="file"
@@ -217,7 +218,7 @@ export default function AttachmentSection({
                   >
                     Download
                   </button>
-                  <button
+                  {!readOnly && <button
                     type="button"
                     onClick={() => { setRemoveTarget(a); setRemovalReason(''); setRemoveError(''); }}
                     data-testid={`remove-btn-${a.id}`}
@@ -225,7 +226,7 @@ export default function AttachmentSection({
                     style={{ ...actionBtn, backgroundColor: '#DC2626', borderColor: '#DC2626' }}
                   >
                     Remove
-                  </button>
+                  </button>}
                 </div>
               )}
             </li>

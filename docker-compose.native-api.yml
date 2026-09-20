@@ -1,0 +1,6 @@
+# Use when the API is already running on the host with npm run dev:server.
+# docker compose -f docker-compose.yml -f docker-compose.native-api.yml up -d --build --no-deps client
+services:
+  client:
+    environment:
+      API_PROXY_TARGET: http://host.docker.internal:3001
