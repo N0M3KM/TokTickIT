@@ -5,6 +5,7 @@ async function signIn(page: Page, email: string, password: string) {
   await page.getByLabel('Email address', { exact: true }).fill(email);
   await page.getByLabel('Password', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+  await page.waitForURL((url) => url.pathname !== '/login');
 }
 async function signOut(page: Page) {
   await page.getByRole('button', { name: 'Sign Out', exact: true }).click();
@@ -83,10 +84,11 @@ test('Lab 3 account, requester and staff UI works through the same-origin proxy'
   await page.getByRole('link', { name: ticket.ticketNumber, exact: true }).click();
   await expect(page.getByText('The issue still needs support.')).toBeVisible();
   await page.getByRole('button', { name: 'Assign to Me' }).click();
-  await page.getByLabel('IT Priority', { exact: true }).selectOption('HIGH');
-  await page.getByLabel('Current Status', { exact: true }).selectOption('OPEN');
+  const workflow = page.getByRole('region', { name: 'Ticket workflow' });
+  await workflow.getByRole('combobox').nth(1).selectOption('HIGH');
+  await workflow.getByRole('combobox').nth(2).selectOption('OPEN');
   await page.getByRole('button', { name: 'Save Changes' }).click();
-  await expect(page.getByLabel('Current Status', { exact: true })).toHaveValue('OPEN');
+  await expect(workflow.getByRole('combobox').nth(2)).toHaveValue('OPEN');
   await page.getByLabel('New internal note').fill('Private verification note.');
   await page.getByRole('button', { name: 'Save Internal Note' }).click();
   await expect(page.getByText('Internal note saved.')).toBeVisible();
