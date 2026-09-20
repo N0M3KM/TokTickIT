@@ -1,6 +1,6 @@
+import { apiFetch } from '../lib/api.js';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.js';
 import Badge, { type BadgeVariant } from '../components/Badge.js';
 import LoadingSpinner from '../components/LoadingSpinner.js';
 import EmptyState from '../components/EmptyState.js';
@@ -39,7 +39,6 @@ type SortOrder = 'asc' | 'desc';
 // ---------------------------------------------------------------------------
 export default function MyTickets() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
 
   const [tickets,    setTickets]    = useState<Ticket[]>([]);
   const [pagination, setPagination] = useState<PaginationMeta>({ page: 1, pageSize: 10, total: 0, totalPages: 1 });
@@ -79,10 +78,8 @@ export default function MyTickets() {
       if (priority)   params.set('priority',   priority);
       if (status)     params.set('status',     status);
 
-      const res = await fetch(`/api/tickets?${params.toString()}`, { credentials: 'same-origin' });
+      const res = await apiFetch(`/api/tickets?${params.toString()}`, { credentials: 'same-origin' });
       if (res.status === 401) {
-        await logout();
-        navigate('/login', { replace: true });
         return;
       }
       if (res.status === 403) {
@@ -101,14 +98,14 @@ export default function MyTickets() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, sortField, sortOrder, search, categoryId, priority, status, logout, navigate]);
+  }, [page, pageSize, sortField, sortOrder, search, categoryId, priority, status, navigate]);
 
   useEffect(() => { void fetchTickets(); }, [fetchTickets]);
 
   // Load categories for filter dropdown
   useEffect(() => {
-    fetch('/api/categories')
-      .then((r) => r.json() as Promise<Category[]>)
+    apiFetch('/api/categories', { credentials: 'same-origin' })
+      .then((r) => r.ok ? r.json() as Promise<Category[]> : [])
       .then(setCategories)
       .catch(() => {});
   }, []);

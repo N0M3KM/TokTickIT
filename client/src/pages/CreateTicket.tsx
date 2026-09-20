@@ -1,3 +1,4 @@
+import { apiFetch } from '../lib/api.js';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.js';
@@ -70,8 +71,8 @@ export default function CreateTicket() {
     setRefError(false);
     try {
       const [catRes, sysRes] = await Promise.all([
-        fetch('/api/categories'),
-        fetch('/api/related-systems'),
+        apiFetch('/api/categories', { credentials: 'same-origin' }),
+        apiFetch('/api/related-systems', { credentials: 'same-origin' }),
       ]);
       if (!catRes.ok || !sysRes.ok) throw new Error();
       const [cats, syss] = await Promise.all([
@@ -148,8 +149,9 @@ export default function CreateTicket() {
         requestedPriority: values.requestedPriority,
       };
 
-      const res  = await fetch('/api/tickets', {
+      const res  = await apiFetch('/api/tickets', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
@@ -167,8 +169,8 @@ export default function CreateTicket() {
       for (const { file } of staged) {
         const fd = new FormData();
         fd.append('file', file);
-        const attachRes = await fetch(`/api/tickets/${ticket.id}/attachments`, {
-          method: 'POST', body: fd,
+        const attachRes = await apiFetch(`/api/tickets/${ticket.id}/attachments`, {
+          method: 'POST', credentials: 'same-origin', body: fd,
         });
         if (!attachRes.ok) {
           setFailedFileName(file.name);

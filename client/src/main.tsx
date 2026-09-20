@@ -1,6 +1,7 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import './styles/tokens.css';
 import './App.css';
+import './styles/lab3.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
@@ -14,10 +15,13 @@ import CreateTicket from './pages/CreateTicket.js';
 import TicketDetail from './pages/TicketDetail.js';
 import StaffTicketQueue from './pages/StaffTicketQueue.js';
 import UserManagement from './pages/UserManagement.js';
+import AccountHelp from './pages/AccountHelp.js';
 
 function Home() {
   const { user } = useAuth();
   if (user?.role === 'REQUESTER') return <Navigate to="/tickets" replace />;
+  if (user?.role === 'IT_STAFF') return <Navigate to="/queue" replace />;
+  if (user?.role === 'ADMINISTRATOR') return <Navigate to="/admin/users" replace />;
   return <Forbidden />;
 }
 
@@ -33,11 +37,13 @@ function Forbidden() {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode><BrowserRouter><AuthProvider><Routes>
     <Route path="/login" element={<Login />} />
+    <Route path="/forgot-password" element={<AccountHelp />} />
+    <Route path="/sign-up" element={<AccountHelp createAccount />} />
     <Route path="/change-password" element={<ChangePassword />} />
     <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
     <Route path="/tickets" element={<Protected roles={['REQUESTER']}><MyTickets /></Protected>} />
     <Route path="/tickets/new" element={<Protected roles={['REQUESTER']}><CreateTicket /></Protected>} />
-    <Route path="/tickets/:id" element={<Protected roles={['REQUESTER']}><TicketDetail /></Protected>} />
+    <Route path="/tickets/:id" element={<Protected roles={['REQUESTER', 'IT_STAFF', 'ADMINISTRATOR']}><TicketDetail /></Protected>} />
     <Route path="/queue" element={<Protected roles={['IT_STAFF', 'ADMINISTRATOR']}><StaffTicketQueue /></Protected>} />
     <Route path="/admin/users" element={<Protected roles={['ADMINISTRATOR']}><UserManagement /></Protected>} />
     <Route path="/forbidden" element={<Forbidden />} />

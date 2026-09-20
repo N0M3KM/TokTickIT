@@ -12,6 +12,16 @@ All tests are planned from `specification.md` AC-01–AC-21 and the Business Rul
 | UI Component / Style | Vitest + React Testing Library |
 | E2E / Responsive | Playwright |
 
+### Lab 3 release smoke command
+
+Start PostgreSQL, the server on port 3001, and the client before running:
+
+```powershell
+npx playwright test e2e/lab-03/release-api.spec.ts
+```
+
+The smoke checks cover health, unauthenticated protection of ticket endpoints, and an httpOnly administrator session. Authentication and security regression checks also cover the safe `redirectAfterLogin` return path, mandatory password-change session restoration, removal of `/api/requesters`, login throttling, and one-time server-generated temporary passwords.
+
 ---
 
 ## 2. Planned Tests
@@ -204,6 +214,36 @@ npx playwright test e2e/lab-03/
 ---
 
 ## 6. Final Results
+
+### Report verification on 20 September 2026
+
+Tested branch: `feature/17-lab3-e2e-and-release`, commit `070b35c`, plus a test-only correction to `working-ui.spec.ts` (scope workflow selectors and wait for login navigation). These are not results from `main`.
+
+| Command / scope | Actual result |
+| --- | --- |
+| Client full Vitest run | 3 files passed, 6 failed to load; 21 collected tests passed. Legacy suites import removed RequesterContext/RequesterSelector modules. |
+| Server full Vitest run | 11 files passed, 8 failed; 110 tests passed, 62 failed. Many legacy API expectations omit authentication and receive 401. |
+| Client `src/lab-03` | 2 files, 18 tests passed: AuthFlow.test.tsx and ChangePassword.test.tsx. |
+| Server `tests/lab-03` | 6 files, 59 tests passed: auth.unit.test.ts (14), ticket-status.unit.test.ts (11), comment-validation.unit.test.ts (6), auth.api.test.ts (13), authorization.api.test.ts (11), staff-queue.api.test.ts (4). The planned staff-ticket-detail, comments-notes and users-admin API test files are absent. |
+| Client and server TypeScript builds | Passed. |
+| Chrome desktop project, selected Lab 3 browser files | 5 passed: 3 release API smoke checks, 1 real requester/staff workflow, 1 mocked-auth Zen Green visual check. |
+
+Fresh output, screenshots and direct API observations are saved in the report evidence bundle. Initial browser failures are retained: an exact-label locator mismatch, then a login-navigation race. The final rerun passed after correcting the test harness; no application source was changed for this report.
+
+Live negative checks returned 403 for Requester access to users, queue and notes; 401 for ticket access after logout; 409 for administrator self-deactivation; and 400 for invalid status change and whitespace-only comment. Browser screenshots cover login, mandatory password change, queue, staff detail and user management at 1280x800, 900x1024 and 375x812. Queue failure screenshot uses an explicitly injected 500 response.
+
+The planned 77-test matrix below is a planning baseline, not an executed total. Individual planned rows, complete migration/attachment regression, admin reset/login sequence, all queue filter combinations, and release-to-main checks are not fully certified by these runs.
+
+### Latest UI update verification
+
+- Client and server production builds: passed.
+- `client/src/lab-03`: 18 tests passed, including 7 dedicated Change Password tests (validation, visibility, mandatory/voluntary navigation, save, retry, and sign-out).
+- `server/tests/lab-03`: 59 tests passed.
+- `e2e/lab-03/zen-green.spec.ts`: passed in installed Chrome using mocked authentication; checked desktop/mobile screens, no mobile horizontal overflow, and primary button color `#006B3C`.
+- Screenshots: `artifacts/lab-03/zen-green-login.png`, `zen-green-change-password.png`, and `zen-green-change-password-mobile.png`.
+- Real API browser workflow: pending; Docker engine is unavailable/failing. Legacy Lab 2 client tests need authenticated fixture migration.
+
+These results are targeted checks, not a completed execution of every planned acceptance test below.
 
 | Level | Total Planned | Pass | Fail | Skip |
 |-------|--------------|------|------|------|

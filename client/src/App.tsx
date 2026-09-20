@@ -11,9 +11,9 @@ export default function App() {
     setState('loading');
     setCategories([]);
     try {
-      const health = await fetch('/api/health');
+      const health = await fetch('/api/health', { credentials: 'same-origin' });
       if (!health.ok || (await health.json()).status !== 'ok') throw new Error();
-      const categoryResponse = await fetch('/api/categories');
+      const categoryResponse = await fetch('/api/categories', { credentials: 'same-origin' });
       if (!categoryResponse.ok) throw new Error();
       setCategories(await categoryResponse.json() as Category[]);
       setState('success');

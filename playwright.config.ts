@@ -7,7 +7,7 @@ import { defineConfig, devices } from '@playwright/test';
  * Run: npx playwright test e2e/lab-02/
  * The full stack (client + server) must be running before executing E2E tests.
  *   Client: http://localhost:5173  (npm run dev inside client/)
- *   Server: http://localhost:3000  (npm run dev inside server/)
+ *   Server: http://localhost:3001  (npm run dev inside server/)
  */
 export default defineConfig({
   testDir: './e2e',
@@ -18,7 +18,8 @@ export default defineConfig({
   reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
 
   use: {
-    baseURL: 'http://localhost:5173',
+    ...(process.env.PLAYWRIGHT_CHANNEL ? { channel: process.env.PLAYWRIGHT_CHANNEL } : {}),
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
   },

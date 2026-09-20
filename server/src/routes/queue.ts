@@ -5,6 +5,15 @@ import { prisma } from '../lib/prisma.js';
 const router = Router();
 const pageSizes = [10, 25, 50];
 
+router.get('/owners', async (_req, res) => {
+  try {
+    res.json(await prisma.user.findMany({
+      where: { isActive: true, role: { in: ['IT_STAFF', 'ADMINISTRATOR'] } },
+      select: { id: true, name: true }, orderBy: { name: 'asc' },
+    }));
+  } catch { res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Could not load ticket owners.' } }); }
+});
+
 function enumValue<T extends Record<string, string>>(value: unknown, values: T): T[keyof T] | undefined {
   return typeof value === 'string' && Object.values(values).includes(value as T[keyof T]) ? value as T[keyof T] : undefined;
 }

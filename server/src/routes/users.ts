@@ -1,6 +1,7 @@
 import { Prisma, UserRole } from '@prisma/client';
+import { randomBytes } from 'node:crypto';
 import { Request, Response, Router } from 'express';
-import { hashPassword, validatePasswordComplexity } from '../lib/auth.js';
+import { hashPassword } from '../lib/auth.js';
 import { prisma } from '../lib/prisma.js';
 
 const router = Router();
@@ -9,6 +10,7 @@ const validRole = (value: unknown): value is UserRole => typeof value === 'strin
 const normalEmail = (value: unknown) => typeof value === 'string' ? value.trim().toLowerCase() : '';
 const validName = (value: unknown) => typeof value === 'string' && value.trim().length > 0 && value.trim().length <= 100;
 const error = (res: Response, status: number, code: string, message: string) => res.status(status).json({ error: { code, message } });
+const generateInitialPassword = () => `Aa1!${randomBytes(24).toString('base64url')}`;
 
 router.get('/', async (req, res) => {
   const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
@@ -19,16 +21,16 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { name, role, isActive = true, initialPassword } = req.body ?? {};
+  const { name, role, isActive = true } = req.body ?? {};
   const email = normalEmail(req.body?.email);
-  if (!validName(name) || !email || !validRole(role) || typeof isActive !== 'boolean' || typeof initialPassword !== 'string') return error(res, 400, 'VALIDATION_ERROR', 'Name, email, role, active state, and initial password are required.');
-  const rules = validatePasswordComplexity(initialPassword);
-  if (rules.length) return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Password does not meet complexity requirements.', fields: { initialPassword: rules } } });
+  if (!validName(name) || !email || !validRole(role) || typeof isActive !== 'boolean') return error(res, 400, 'VALIDATION_ERROR', 'Name, email, role, and active state are required.');
   try {
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) return error(res, 409, 'DUPLICATE_EMAIL', 'Email address is already in use.');
+    const initialPassword = generateInitialPassword();
     const user = await prisma.user.create({ data: { name: name.trim(), email, role, isActive, passwordHash: await hashPassword(initialPassword), mustChangePassword: true }, select });
-    res.status(201).json(user);
+    // This is intentionally the only response that includes the temporary password.
+    res.status(201).json({ user, initialPassword });
   } catch { error(res, 500, 'INTERNAL_ERROR', 'An unexpected error occurred.'); }
 });
 
@@ -58,15 +60,15 @@ router.patch('/:id', async (req, res) => {
 });
 
 router.post('/:id/set-password', async (req, res) => {
-  const id = Number(req.params.id), password = req.body?.password;
-  const rules = validatePasswordComplexity(password);
+  const id = Number(req.params.id);
   if (!Number.isInteger(id) || id < 1) return error(res, 404, 'NOT_FOUND', 'User not found.');
-  if (rules.length) return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Password does not meet complexity requirements.', fields: { password: rules } } });
   try {
     const exists = await prisma.user.findUnique({ where: { id }, select: { id: true } });
     if (!exists) return error(res, 404, 'NOT_FOUND', 'User not found.');
-    await prisma.user.update({ where: { id }, data: { passwordHash: await hashPassword(password), mustChangePassword: true } });
-    res.json({ message: 'Initial password set. User must change password at next login.' });
+    const initialPassword = generateInitialPassword();
+    await prisma.user.update({ where: { id }, data: { passwordHash: await hashPassword(initialPassword), mustChangePassword: true } });
+    // The cleartext password is returned once and is never persisted or logged.
+    res.json({ message: 'Initial password generated. The user must change it at next login.', initialPassword });
   } catch { error(res, 500, 'INTERNAL_ERROR', 'An unexpected error occurred.'); }
 });
 

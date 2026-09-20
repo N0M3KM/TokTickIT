@@ -6,7 +6,7 @@ import React from 'react';
  */
 export type BadgeVariant =
   | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'
-  | 'NEW'
+  | 'NEW' | 'OPEN' | 'IN_PROGRESS' | 'WAITING_FOR_REQUESTER' | 'RESOLVED' | 'CLOSED' | 'REOPENED' | 'CANCELLED'
   | 'Active' | 'Removed';
 
 const BADGE_STYLES: Record<BadgeVariant, React.CSSProperties> = {
@@ -15,6 +15,13 @@ const BADGE_STYLES: Record<BadgeVariant, React.CSSProperties> = {
   HIGH:     { backgroundColor: '#FEE2E2', color: '#991B1B' },
   CRITICAL: { backgroundColor: '#F3E8FF', color: '#6B21A8' },
   NEW:      { backgroundColor: '#E0F2FE', color: '#0369A1' },
+  OPEN: { backgroundColor: 'var(--badge-open-bg)', color: 'var(--badge-open-text)' },
+  IN_PROGRESS: { backgroundColor: 'var(--badge-progress-bg)', color: 'var(--badge-progress-text)' },
+  WAITING_FOR_REQUESTER: { backgroundColor: 'var(--badge-admin-bg)', color: 'var(--badge-admin-text)' },
+  RESOLVED: { backgroundColor: 'var(--badge-staff-bg)', color: 'var(--badge-staff-text)' },
+  CLOSED: { backgroundColor: 'var(--badge-closed-bg)', color: 'var(--badge-closed-text)' },
+  REOPENED: { backgroundColor: 'var(--badge-reopened-bg)', color: 'var(--badge-reopened-text)' },
+  CANCELLED: { backgroundColor: 'var(--badge-closed-bg)', color: 'var(--badge-cancelled-text)' },
   Active:   { backgroundColor: 'var(--color-pale-green)', color: 'var(--color-success-text)' },
   Removed:  { backgroundColor: 'var(--color-warning-bg)', color: 'var(--color-warning)' },
 };
@@ -39,7 +46,7 @@ export default function Badge({ variant, label, 'data-testid': testId }: BadgePr
         whiteSpace: 'nowrap',
       }}
     >
-      {label ?? variant}
+      {label ?? variant.replace(/_/g, ' ')}
     </span>
   );
 }

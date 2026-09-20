@@ -145,6 +145,7 @@ describe('API-03 — unknown email returns same 401 as wrong password', () => {
 describe('API-04 / AC-06 — inactive account returns 403', () => {
   beforeEach(() => {
     userFindUnique.mockResolvedValue(inactiveUser);
+    (bcrypt.compare as ReturnType<typeof vi.fn>).mockResolvedValue(true);
   });
 
   it('returns 403 with ACCOUNT_INACTIVE code', async () => {
@@ -252,7 +253,7 @@ describe('API-31 / AC-02 — mustChangePassword blocks normal app routes', () =>
 describe('API-32 / AC-19 — create ticket uses JWT identity (BR-03)', () => {
   it('does not require requesterId in body — uses req.user.id', async () => {
     const token = signToken(activeRequester.id, 'REQUESTER');
-    userFindUnique.mockResolvedValueOnce({ mustChangePassword: false, isActive: true });
+    userFindUnique.mockResolvedValueOnce({ mustChangePassword: false, isActive: true, role: 'REQUESTER' });
 
     // POST without requesterId in body — should reach ticket validation (not a 400 for missing requesterId)
     const res = await request(app).post('/api/tickets')

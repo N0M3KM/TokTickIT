@@ -6,7 +6,6 @@ import cookieParser from 'cookie-parser';
 
 import authRouter from './routes/auth.js';
 import categoriesRouter from './routes/categories.js';
-import requestersRouter from './routes/requesters.js';
 import queueRouter from './routes/queue.js';
 import relatedSystemsRouter from './routes/relatedSystems.js';
 import ticketOperationsRouter from './routes/ticketOperations.js';
@@ -36,16 +35,13 @@ app.get('/api/health', (_req, res) => {
 app.use('/api/auth', authRouter);
 
 // ── Reference data (public — used by Create Ticket dropdowns) ───────────────
-app.use('/api/categories', categoriesRouter);
-app.use('/api/requesters', requestersRouter);
-app.use('/api/related-systems', relatedSystemsRouter);
+app.use('/api/categories', requireAuth, requirePasswordChanged, categoriesRouter);
+app.use('/api/related-systems', requireAuth, requirePasswordChanged, relatedSystemsRouter);
 
 // ── Protected routes — require valid JWT + password already changed ──────────
 const protect = [requireAuth, requirePasswordChanged];
-const requesterProtect = [...protect, requireRole('REQUESTER')];
-
-app.use('/api/tickets',                      ...requesterProtect, ticketsRouter);
-app.use('/api/tickets/:id/attachments',      ...requesterProtect, attachmentsRouter);
+app.use('/api/tickets',                      ...protect, ticketsRouter);
+app.use('/api/tickets/:id/attachments',      ...protect, attachmentsRouter);
 app.use('/api/queue',                         ...protect, requireRole('IT_STAFF', 'ADMINISTRATOR'), queueRouter);
 app.use('/api/tickets',                       ...protect, ticketOperationsRouter);
 app.use('/api/users',                         ...protect, requireRole('ADMINISTRATOR'), usersRouter);

@@ -1,9 +1,13 @@
+import { apiFetch } from '../lib/api.js';
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Badge, { type BadgeVariant } from '../components/Badge.js';
 import LoadingSpinner from '../components/LoadingSpinner.js';
 import ErrorState from '../components/ErrorState.js';
 import AttachmentSection, { type Attachment } from '../components/AttachmentSection.js';
+import { useAuth } from '../context/AuthContext.js';
+import TicketDiscussion from '../components/TicketDiscussion.js';
+import TicketOperations from '../components/TicketOperations.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -25,6 +29,9 @@ interface TicketDetail {
   createdAt: string;
   updatedAt: string;
   attachments: Attachment[];
+  itPriority: string;
+  ticketOwnerId: number | null;
+  requesterResolvedAt: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -33,17 +40,19 @@ interface TicketDetail {
 export default function TicketDetail() {
   const { id }   = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const backPath = user?.role === 'REQUESTER' ? '/tickets' : '/queue';
 
   const [ticket,  setTicket]  = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<'not-found' | 'forbidden' | 'general' | null>(null);
 
   async function fetchTicket() {
-    if (!id) return;
-    setLoading(true);
+    if (!id || !/^\d+$/.test(id)) { setError('not-found'); setLoading(false); return; }
+    setLoading(ticket === null);
     setError(null);
     try {
-      const res = await fetch(`/api/tickets/${id}`);
+      const res = await apiFetch(`/api/tickets/${id}`, { credentials: 'same-origin' });
       if (res.status === 403) { setError('forbidden'); return; }
       if (res.status === 404) { setError('not-found'); return; }
       if (!res.ok)            { setError('general');   return; }
@@ -65,7 +74,7 @@ export default function TicketDetail() {
   if (error === 'forbidden') {
     return (
       <div>
-        <BackBtn onBack={() => navigate('/tickets')} />
+        <BackBtn onBack={() => navigate(backPath)} />
         <ErrorState
           data-testid="forbidden-error"
           message="You do not have permission to view this ticket."
@@ -77,7 +86,7 @@ export default function TicketDetail() {
   if (error === 'not-found') {
     return (
       <div>
-        <BackBtn onBack={() => navigate('/tickets')} />
+        <BackBtn onBack={() => navigate(backPath)} />
         <ErrorState data-testid="not-found-error" message="Ticket not found." />
       </div>
     );
@@ -86,7 +95,7 @@ export default function TicketDetail() {
   if (error === 'general' || !ticket) {
     return (
       <div>
-        <BackBtn onBack={() => navigate('/tickets')} />
+        <BackBtn onBack={() => navigate(backPath)} />
         <ErrorState
           data-testid="general-error"
           message="Could not load ticket. Please try again."
@@ -104,11 +113,11 @@ export default function TicketDetail() {
       {/* Breadcrumb + back */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
         <nav aria-label="Breadcrumb" style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
-          <button onClick={() => navigate('/tickets')} style={ghostBtn}>My Tickets</button>
+          <button onClick={() => navigate(backPath)} style={ghostBtn}>{user?.role === 'REQUESTER' ? 'My Tickets' : 'Ticket Queue'}</button>
           {' > Ticket Details'}
         </nav>
-        <button onClick={() => navigate('/tickets')} style={secondaryBtn} data-testid="back-btn">
-          ← Back to My Tickets
+        <button onClick={() => navigate(backPath)} style={secondaryBtn} data-testid="back-btn">
+          ← Back to {user?.role === 'REQUESTER' ? 'My Tickets' : 'Ticket Queue'}
         </button>
       </div>
 
@@ -148,8 +157,12 @@ export default function TicketDetail() {
       </div>
 
       {/* Attachments */}
+      <TicketOperations ticket={ticket} onSaved={() => void fetchTicket()} />
+      <TicketDiscussion ticketId={ticket.id} />
+      {user?.role !== 'REQUESTER' && <TicketDiscussion ticketId={ticket.id} internal />}
       <div style={card}>
         <AttachmentSection
+          readOnly={user?.role !== 'REQUESTER'}
           ticketId={ticket.id}
           attachments={ticket.attachments}
           onAttachmentsChange={(updated) => setTicket((t) => t ? { ...t, attachments: updated } : t)}

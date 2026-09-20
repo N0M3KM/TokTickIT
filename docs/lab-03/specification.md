@@ -54,7 +54,7 @@ The system now needs real users with passwords. An Administrator manages user ac
 | FR-02 | The JWT shall be stored in an `httpOnly` cookie and expire after 8 hours; logout invalidates it server-side (blocklist) and clears the cookie. |
 | FR-03 | Every protected API endpoint shall verify the JWT and return 401 Unauthenticated if absent or invalid. |
 | FR-04 | A user whose `mustChangePassword` flag is true shall be redirected to the mandatory Change Password screen and cannot access any other route until a valid new password is saved. |
-| FR-05 | The application shell shall display the authenticated user's name and role badge; it shall show only the navigation links permitted for that role. |
+| FR-05 | The application shell shall display the authenticated user's name and role badge; it shall show only the navigation links permitted for that role; it shall provide a Logout action that clears the session and returns the user to the Login screen. |
 | FR-06 | The DevRequester selector and Change Requester action shall be removed entirely from the frontend. |
 | FR-07 | All Lab 2 Requester Ticket and Attachment endpoints shall use `req.user.id` (from JWT) as the requester identity; any client-supplied `requesterId` parameter shall be ignored. |
 | FR-08 | An authenticated Requester shall access Create Ticket, My Tickets, and Ticket Detail using their authenticated identity; ownership protection from Lab 2 is preserved. |
@@ -67,9 +67,9 @@ The system now needs real users with passwords. An Administrator manages user ac
 | FR-15 | IT Staff and Administrator may create Internal Notes on a ticket; Internal Notes are invisible to Requesters. |
 | FR-16 | A Requester may click "Problem Appears Resolved" to indicate the issue appears fixed; this does not formally change ticket status but sets a `requesterResolvedAt` timestamp. |
 | FR-17 | An Administrator may view the full user list with optional name/email search and optional role filter. |
-| FR-18 | An Administrator may create a user with: full name, email, one role, active/inactive state, and an initial password that must be changed at first login. |
+| FR-18 | An Administrator may create a user with: full name, email, one role, and active/inactive state. The server generates a one-time initial password that must be changed at first login. |
 | FR-19 | An Administrator may edit a user's name, email, role, and activation state. |
-| FR-20 | An Administrator may set a new initial password for any user; `mustChangePassword` is reset to true. |
+| FR-20 | An Administrator may generate a new one-time initial password for any user; `mustChangePassword` is reset to true. |
 | FR-21 | An Administrator may not deactivate their own account. |
 | FR-22 | An Administrator may not deactivate or alter the last remaining active Administrator account. |
 | FR-23 | Duplicate email addresses shall be rejected with a 409 Conflict response. |
