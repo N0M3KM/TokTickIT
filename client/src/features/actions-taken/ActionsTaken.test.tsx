@@ -78,11 +78,14 @@ describe('Actions Taken isolated read-only preparation', () => {
   it('renders only allowlisted snapshot fields and supports history retry', () => {
     setup(ready(), { 101: { status: 'ready', pagination: { page: 1, pageSize: 10, total: 1, totalPages: 1 }, data: [{
       id: 1, actionId: 101, version: 1, eventType: 'CREATE', editor: actor, createdAt: action.createdAt,
-      snapshot: { description: 'Historical description', followUpRequired: false, internalNote: 'Secret internal note' },
+      snapshot: { description: 'Historical description', followUpRequired: false, performedById: 5, assigneeId: 6, updatedById: 5, internalNote: 'Secret internal note' },
     }] } });
     fireEvent.click(screen.getByRole('button', { name: 'View action 101' }));
     fireEvent.click(screen.getByText('Revision history for action 101'));
     expect(screen.getByText('Historical description')).toBeInTheDocument();
+    expect(screen.getByText('Performed by account')).toBeInTheDocument();
+    expect(screen.getByText('Assigned account')).toBeInTheDocument();
+    expect(screen.getByText('Editor account')).toBeInTheDocument();
     expect(screen.queryByText('Secret internal note')).not.toBeInTheDocument();
     cleanup();
     const view = setup(ready(), { 101: { status: 'error' } });

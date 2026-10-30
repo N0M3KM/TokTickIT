@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useBlocker, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+import { useUnsavedChanges } from '../../components/DraftNavigationGuard.js';
 import type { AuthUser } from '../../context/AuthContext.js';
 import ActionDetails from './ActionDetails.js';
 import ActionForm, { createInitialDraft, type ActionDraft, type ActionIntent } from './ActionForm.js';
@@ -41,16 +42,11 @@ export default function TicketActions({ ticket, user, onSaved }: Props) {
   const listGeneration = useRef(0);
   const historyControllers = useRef(new Map<number, AbortController>());
   const pendingCreate = useRef<{ signature: string; key: string; body: CreateActionBody } | null>(null);
-  const blocker = useBlocker(dirty || uncertain || busy);
+  useUnsavedChanges(dirty || uncertain || busy);
   const canWrite = user.role !== 'REQUESTER' && isActive(ticket.currentStatus);
   const hashMatch = /^#action-([1-9]\d*)$/.exec(location.hash);
   const focusActionId = hashMatch && Number.isSafeInteger(Number(hashMatch[1])) ? Number(hashMatch[1]) : undefined;
 
-  useEffect(() => {
-    if (blocker.state !== 'blocked') return;
-    if (window.confirm('Leave this page and discard the unsaved action draft?')) blocker.proceed();
-    else blocker.reset();
-  }, [blocker]);
 
   useEffect(() => {
     mounted.current = true;
@@ -99,21 +95,6 @@ export default function TicketActions({ ticket, user, onSaved }: Props) {
     if (linkedOutsidePage) document.getElementById(`action-${linked.id}`)?.focus();
   }, [linkedOutsidePage, linked]);
 
-  useEffect(() => {
-    if (!dirty && !uncertain && !busy) return;
-    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
-    window.addEventListener('beforeunload', warn);
-    // Sign out mutates the session rather than navigating through the router.
-    const confirmLink = (event: MouseEvent) => {
-      const target = event.target instanceof Element ? event.target : null;
-      const navigation = target?.closest('.lab3-identity button');
-      if (navigation && !window.confirm('Leave this page and discard the unsaved action draft?')) {
-        event.preventDefault(); event.stopPropagation();
-      }
-    };
-    document.addEventListener('click', confirmLink, true);
-    return () => { window.removeEventListener('beforeunload', warn); document.removeEventListener('click', confirmLink, true); };
-  }, [dirty, uncertain, busy]);
 
   const requestHistory = useCallback((actionId: number, historyPage: number) => {
     historyControllers.current.get(actionId)?.abort();

@@ -186,3 +186,40 @@ For an installed Chrome browser, set `$env:PLAYWRIGHT_CHANNEL='chrome'` before r
 Branch flow: `main → lab3-staging → feature/*`. Review feature branches before integration; this update does not merge or publish a release.
 
 Lab 1 and Lab 2 documents remain under `docs/lab-01/` and `docs/lab-02/` as historical records. Lab 3 uses authenticated identity in place of their development-only selector.
+
+## Lab 4 ticket workflow (Feature 21)
+
+The workflow increment adds Actions Taken persistence, versioned ticket writes,
+resolution/reopening gates and append-only shared history. See the
+[Lab 4 contract](docs/lab-04/specification.md) and
+[Feature 21 verification](artifacts/lab-04/feature-21-verification.md).
+
+Before running an existing development/deployment database with this version,
+apply the additive migration and regenerate the Prisma client:
+
+```powershell
+npx prisma migrate deploy --schema server/prisma/schema.prisma
+npm run prisma:generate --workspace=server
+```
+
+Migration preserves prior data and estimates legacy RESOLVED/CLOSED timestamps
+from the previous UTC updatedAt; no legacy work or audit events are invented.
+Existing owner/priority/status/advisory API clients must send `expectedVersion`.
+The bundled UI does so and preserves drafts on conflicts.
+
+```powershell
+npm run test:workflow-db
+npm run test:workflow-browser
+```
+
+These commands create a disposable PostgreSQL 16 cluster with generated local
+credentials and synthetic data, override DATABASE_URL for child processes,
+verify populated migration preservation and stop the cluster afterward. They do
+not migrate the configured application database. The pinned `embedded-postgres`
+development dependency supplies PostgreSQL binaries; browser checks use installed
+Chrome and launch their own API/Vite servers. No Docker service is required.
+The browser path is real HTTP -> API -> Prisma -> PostgreSQL; it does not mock
+action or workflow writes. Diagnostic clusters remain in the OS temporary folder.
+
+Feature branches target `lab04-staging`; the owner performs reviewed PR merges.
+Feature 22 preparation remains separate until Feature 21 is integrated.

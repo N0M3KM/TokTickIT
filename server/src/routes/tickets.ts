@@ -3,6 +3,7 @@ import { Priority, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { requireRole } from '../middleware/requireAuth.js';
 import { generateTicketNumber } from '../lib/ticketNumber.js';
+import { allowedTicketTransitions, readResolutionGate } from '../lib/ticketWorkflow.js';
 import {
   trimField,
   validateSummary,
@@ -39,6 +40,10 @@ const TICKET_SELECT = {
   itPriority: true,
   ticketOwnerId: true,
   requesterResolvedAt: true,
+  version: true,
+  resolvedAt: true,
+  reopenedAt: true,
+  resolutionTimeEstimated: true,
   ticketOwner: { select: { id: true, name: true } },
   ticketDate: true,
   createdAt: true,
@@ -61,6 +66,10 @@ function formatTicket(t: {
   itPriority: Priority;
   ticketOwnerId: number | null;
   requesterResolvedAt: Date | null;
+  version: number;
+  resolvedAt: Date | null;
+  reopenedAt: Date | null;
+  resolutionTimeEstimated: boolean;
   ticketOwner: { id: number; name: string } | null;
   ticketDate: Date;
   createdAt: Date;
@@ -86,6 +95,10 @@ function formatTicket(t: {
     ticketOwnerId: t.ticketOwnerId,
     ticketOwner: t.ticketOwner,
     requesterResolvedAt: t.requesterResolvedAt,
+    version: t.version,
+    resolvedAt: t.resolvedAt,
+    reopenedAt: t.reopenedAt,
+    resolutionTimeEstimated: t.resolutionTimeEstimated,
     ticketDate: t.ticketDate,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
@@ -374,9 +387,11 @@ router.get('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    return res.status(200).json({
+    return res.status(200).set('Cache-Control', 'no-store').json({
       ...formatTicket(ticket),
       attachments: ticket.attachments,
+      allowedTransitions: allowedTicketTransitions(ticket.currentStatus, req.user!.role),
+      resolutionGate: await readResolutionGate(prisma, ticket),
     });
   } catch {
     return internalError(res);

@@ -61,3 +61,13 @@ history renderer allowlists business fields and intentionally omits unspecified
 identity snapshot structures rather than displaying arbitrary JSON.
 
 Evidence: `artifacts/lab-04/feature-42-verification.md`.
+
+## Feature 21 follow-up
+
+The Feature 21 branch adds the missing action persistence, shared parent lock,
+versioned workflow writes and audit schema. The finalized revision identities are
+allowlisted numeric `performedById`, `assigneeId` and `updatedById`, now displayed
+by the history viewer. Real action completion and requester/staff workflow browser
+checks run against disposable PostgreSQL; see
+`artifacts/lab-04/feature-21-verification.md`. The earlier mocked-only evidence
+above remains a historical record of Feature 20, not a claim about the new tests.

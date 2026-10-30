@@ -1,5 +1,12 @@
 # Feature 19 local work in progress
 
+Feature 21 follow-up: the current branch adds the previously missing models,
+additive migration, action APIs, durable idempotency, shared transaction guard and
+ticket workflow/audit implementation. The preparation record below is historical;
+current evidence is in `artifacts/lab-04/feature-21-verification.md`. Use the
+mandatory isolated `npm run test:workflow-db` suite for real DB cases; ordinary
+Vitest runs exclude `.db.test.ts` because those require the disposable harness.
+
 Feature 19 / GitHub issue #41: https://github.com/N0M3KM/TokTickIT/issues/41
 
 Branch: `feature19/actions-taken-foundation`, updated by fast-forward to `lab04-staging` at `7aaed92` before publishing the validation slice.

@@ -1,5 +1,5 @@
 import { apiFetch } from '../lib/api.js';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Badge, { type BadgeVariant } from '../components/Badge.js';
 import LoadingSpinner from '../components/LoadingSpinner.js';
@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext.js';
 import TicketDiscussion from '../components/TicketDiscussion.js';
 import TicketOperations from '../components/TicketOperations.js';
 import TicketActions from '../features/actions-taken/TicketActions.js';
+import DraftNavigationGuard from '../components/DraftNavigationGuard.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -33,6 +34,12 @@ interface TicketDetail {
   itPriority: string;
   ticketOwnerId: number | null;
   requesterResolvedAt: string | null;
+  version: number;
+  resolvedAt: string | null;
+  reopenedAt: string | null;
+  resolutionTimeEstimated: boolean;
+  allowedTransitions: string[];
+  resolutionGate: { reasons: string[] };
 }
 
 // ---------------------------------------------------------------------------
@@ -47,25 +54,35 @@ export default function TicketDetail() {
   const [ticket,  setTicket]  = useState<TicketDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState<'not-found' | 'forbidden' | 'general' | null>(null);
+  const [refreshError, setRefreshError] = useState(false);
+  const requestGeneration = useRef(0);
 
-  async function fetchTicket() {
+  async function fetchTicket(initial = false) {
+    const generation = ++requestGeneration.current;
     if (!id || !/^\d+$/.test(id)) { setError('not-found'); setLoading(false); return; }
-    setLoading(ticket === null);
+    setLoading(initial || ticket === null);
     setError(null);
+    setRefreshError(false);
     try {
       const res = await apiFetch(`/api/tickets/${id}`, { credentials: 'same-origin' });
+      if (generation !== requestGeneration.current) return;
       if (res.status === 403) { setError('forbidden'); return; }
       if (res.status === 404) { setError('not-found'); return; }
-      if (!res.ok)            { setError('general');   return; }
-      setTicket(await res.json() as TicketDetail);
+      if (!res.ok)            { if (ticket && !initial) setRefreshError(true); else setError('general'); return; }
+      const next = await res.json() as TicketDetail;
+      if (generation === requestGeneration.current) setTicket(next);
     } catch {
-      setError('general');
+      if (generation !== requestGeneration.current) return;
+      if (ticket && !initial) setRefreshError(true); else setError('general');
     } finally {
-      setLoading(false);
+      if (generation === requestGeneration.current) setLoading(false);
     }
   }
 
-  useEffect(() => { void fetchTicket(); }, [id]);
+  useEffect(() => {
+    setTicket(null); void fetchTicket(true);
+    return () => { requestGeneration.current++; };
+  }, [id]);
 
   // ---------------------------------------------------------------------------
   // Render states
@@ -110,7 +127,8 @@ export default function TicketDetail() {
   // Render ticket
   // ---------------------------------------------------------------------------
   return (
-    <div>
+    <DraftNavigationGuard><div>
+      {refreshError ? <p role="alert">Could not refresh the ticket. Your current view and drafts are retained. <button type="button" onClick={() => void fetchTicket()}>Retry ticket refresh</button></p> : null}
       {/* Breadcrumb + back */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
         <nav aria-label="Breadcrumb" style={{ fontSize: 13, color: 'var(--color-text-secondary)' }}>
@@ -158,8 +176,8 @@ export default function TicketDetail() {
       </div>
 
       {/* Attachments */}
-      <TicketOperations ticket={ticket} onSaved={() => void fetchTicket()} />
-      {user ? <TicketActions key={`${user.id}-${ticket.id}`} ticket={ticket} user={user} onSaved={() => void fetchTicket()} /> : null}
+      <TicketOperations key={`workflow-${user?.id}-${ticket.id}`} ticket={ticket} onSaved={() => void fetchTicket()} />
+      {user ? <TicketActions key={`actions-${user.id}-${ticket.id}`} ticket={ticket} user={user} onSaved={() => void fetchTicket()} /> : null}
       <TicketDiscussion ticketId={ticket.id} />
       {user?.role !== 'REQUESTER' && <TicketDiscussion ticketId={ticket.id} internal />}
       <div style={card}>
@@ -170,7 +188,7 @@ export default function TicketDetail() {
           onAttachmentsChange={(updated) => setTicket((t) => t ? { ...t, attachments: updated } : t)}
         />
       </div>
-    </div>
+    </div></DraftNavigationGuard>
   );
 }
 
