@@ -29,11 +29,13 @@ export default function ActionDetails({ action, history, onHistoryOpen, onHistor
       {history.status === 'ready' ? <>
         {history.data.length === 0 ? <p>No recorded history</p> : <ol className="actions-taken__history">{history.data.map(revision => <li key={revision.id}>
           <p>Version {revision.version} · {revision.eventType === 'CREATE' ? 'Created' : revision.eventType === 'STATUS' ? 'Status changed' : 'Edited'} by {revision.editor.name} · <time dateTime={revision.createdAt}>{formatActionTime(revision.createdAt)}</time></p>
-          <dl>{(['actionAt', 'description', 'result', 'status', 'followUpRequired', 'followUpNote', 'attachmentNotes', 'cancellationReason'] as const).map(field => {
+          <dl>{(['actionAt', 'description', 'result', 'status', 'performedById', 'assigneeId', 'updatedById', 'followUpRequired', 'followUpNote', 'attachmentNotes', 'cancellationReason'] as const).map(field => {
             const value = revision.snapshot[field];
             if (value === undefined) return null;
-            const label = { actionAt: 'Action date/time', description: 'Description', result: 'Result', status: 'Action status', followUpRequired: 'Follow-up required', followUpNote: 'Follow-up note', attachmentNotes: 'Attachment notes', cancellationReason: 'Cancellation reason' }[field];
-            const text = value === null ? 'None' : typeof value === 'boolean' ? (value ? 'Yes' : 'No') : typeof value === 'string' ? (field === 'actionAt' ? formatActionTime(value) : value) : 'Unavailable';
+            const label = { actionAt: 'Action date/time', description: 'Description', result: 'Result', status: 'Action status', performedById: 'Performed by account', assigneeId: 'Assigned account', updatedById: 'Editor account', followUpRequired: 'Follow-up required', followUpNote: 'Follow-up note', attachmentNotes: 'Attachment notes', cancellationReason: 'Cancellation reason' }[field];
+            const identity = ['performedById', 'assigneeId', 'updatedById'].includes(field);
+            const text = identity ? typeof value === 'number' && Number.isSafeInteger(value) && value > 0 ? String(value) : 'Unavailable'
+              : value === null ? 'None' : typeof value === 'boolean' ? (value ? 'Yes' : 'No') : typeof value === 'string' ? (field === 'actionAt' ? formatActionTime(value) : value) : 'Unavailable';
             return <div key={field}><dt>{label}</dt><dd>{text}</dd></div>;
           })}</dl>
         </li>)}</ol>}

@@ -6,7 +6,8 @@ export default defineConfig({
     proxy: {
       '/api': {
         target: process.env.API_PROXY_TARGET ?? 'http://localhost:3001',
-        changeOrigin: true,
+        // Preserve the browser-facing Host so the API can verify same-origin writes.
+        changeOrigin: false,
       },
     },
   },

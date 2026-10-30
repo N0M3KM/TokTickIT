@@ -10,9 +10,12 @@
     "dev:client": "npm run dev --workspace=client",
     "dev:server": "npm run dev --workspace=server",
     "build": "npm run build --workspace=client && npm run build --workspace=server",
-    "test": "npm run test --workspace=client && npm run test --workspace=server"
+    "test": "npm run test --workspace=client && npm run test --workspace=server",
+    "test:workflow-db": "node scripts/test-workflow-db.mjs",
+    "test:workflow-browser": "node scripts/test-workflow-db.mjs -- scripts/test-workflow-browser.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1"
+    "@playwright/test": "^1.62.1",
+    "embedded-postgres": "16.14.0-beta.17"
   }
 }
