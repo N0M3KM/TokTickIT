@@ -8,6 +8,7 @@ import AttachmentSection, { type Attachment } from '../components/AttachmentSect
 import { useAuth } from '../context/AuthContext.js';
 import TicketDiscussion from '../components/TicketDiscussion.js';
 import TicketOperations from '../components/TicketOperations.js';
+import TicketActions from '../features/actions-taken/TicketActions.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -158,6 +159,7 @@ export default function TicketDetail() {
 
       {/* Attachments */}
       <TicketOperations ticket={ticket} onSaved={() => void fetchTicket()} />
+      {user ? <TicketActions key={`${user.id}-${ticket.id}`} ticket={ticket} user={user} onSaved={() => void fetchTicket()} /> : null}
       <TicketDiscussion ticketId={ticket.id} />
       {user?.role !== 'REQUESTER' && <TicketDiscussion ticketId={ticket.id} internal />}
       <div style={card}>

@@ -4,7 +4,7 @@ import './App.css';
 import './styles/lab3.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider, useNavigate } from 'react-router-dom';
 import { AuthProvider, type UserRole, useAuth } from './context/AuthContext.js';
 import AppShell from './components/AppShell.js';
 import RequireAuth from './components/RequireAuth.js';
@@ -34,8 +34,7 @@ function Forbidden() {
   return <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 16 }}><section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 6, padding: 32, textAlign: 'center' }}><h1>403 — Access denied</h1><p>You do not have permission to view this page.</p><button onClick={() => navigate('/')} style={{ border: 'none', borderRadius: 6, padding: '10px 16px', background: 'var(--color-primary)', color: '#fff' }}>Return to Home</button></section></main>;
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode><BrowserRouter><AuthProvider><Routes>
+const router = createBrowserRouter(createRoutesFromElements(<>
     <Route path="/login" element={<Login />} />
     <Route path="/forgot-password" element={<AccountHelp />} />
     <Route path="/sign-up" element={<AccountHelp createAccount />} />
@@ -48,5 +47,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <Route path="/admin/users" element={<Protected roles={['ADMINISTRATOR']}><UserManagement /></Protected>} />
     <Route path="/forbidden" element={<Forbidden />} />
     <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes></AuthProvider></BrowserRouter></React.StrictMode>,
+  </>));
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode><AuthProvider><RouterProvider router={router} /></AuthProvider></React.StrictMode>,
 );

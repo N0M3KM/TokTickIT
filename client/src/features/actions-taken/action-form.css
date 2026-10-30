@@ -1,0 +1,17 @@
+.action-form { color: var(--color-text-primary); overflow-wrap: anywhere; }
+.action-form fieldset { border: 0; padding: 0; min-width: 0; }
+.action-form label { display: flex; flex-direction: column; gap: var(--space-xs); margin-block: var(--space-md); font-weight: 600; }
+.action-form input, .action-form select, .action-form textarea { min-height: 44px; width: 100%; max-width: 100%; box-sizing: border-box; padding: var(--space-sm); border: 1px solid var(--color-editable-border); border-radius: var(--border-radius-control); color: var(--color-text-primary); background: var(--color-editable-bg); font: inherit; }
+.action-form input[readonly] { background: var(--color-readonly-bg); }
+.action-form textarea { min-height: 120px; resize: vertical; }
+.action-form .action-form__check { flex-direction: row; align-items: center; }
+.action-form__check input { width: 24px; }
+.action-form__fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-md); }
+.action-form label > span { font-size: 13px; font-weight: 400; }
+.action-form__error { color: var(--color-error); }
+.action-form [aria-invalid="true"] { border-color: var(--color-error); }
+.action-form button { min-height: 44px; padding: var(--space-sm) var(--space-md); border: 1px solid var(--color-primary); border-radius: var(--border-radius-control); color: var(--color-primary); background: var(--color-surface); margin: var(--space-xs); }
+.action-form button:disabled { color: var(--color-text-secondary); background: var(--color-disabled-bg); }
+.action-form__buttons, .action-form__confirmation { margin-block: var(--space-md); }
+.action-form__confirmation { background: var(--color-readonly-bg); padding: var(--space-md); }
+@media (max-width: 767px) { .action-form__fields { grid-template-columns: minmax(0, 1fr); gap: 0; } .action-form__buttons { display: flex; flex-direction: column; } }
