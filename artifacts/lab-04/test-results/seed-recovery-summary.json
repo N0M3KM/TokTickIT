@@ -1,0 +1,21 @@
+{
+  "result": "PASS",
+  "date": "2026-10-31",
+  "command": "npm run test:seed-recovery",
+  "databaseScope": "disposable loopback cluster; separate source and restored databases",
+  "seedRuns": 2,
+  "demoTickets": 12,
+  "demoActions": 7,
+  "ticketStatuses": 8,
+  "priorities": 4,
+  "actionStatuses": 4,
+  "preservedEditedRowsPasswordsFlagsVersionsTimestampsAndAudits": true,
+  "backupFormat": "whitelisted logical JSON with separately migrated schema; not pg_dump",
+  "counts": { "category": 5, "relatedSystem": 7, "user": 17, "ticket": 13, "attachment": 2, "publicComment": 0, "internalNote": 0, "actionTaken": 7, "actionRevision": 8, "ticketWorkflowEvent": 0 },
+  "restoredRowsAndRelationshipsEqual": true,
+  "passwordHashVerified": true,
+  "sequenceVerified": true,
+  "syntheticAttachmentSha256": "83f08d4cbc9e82b6113d488717b3c166208cd00aee3b9b32a8ef821b60179f1c",
+  "recoveryMs": 3048.89,
+  "limitation": "Native pg_dump/pg_restore tools absent; no native dump compatibility certification."
+}

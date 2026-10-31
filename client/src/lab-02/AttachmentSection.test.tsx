@@ -1,184 +1,152 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
-import { RequesterProvider } from '../context/RequesterContext.js';
+import { AuthProvider, useAuth, type AuthUser, type UserRole } from '../context/AuthContext.js';
+import RequireAuth from '../components/RequireAuth.js';
 import AttachmentSection, { type Attachment } from '../components/AttachmentSection.js';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+// Attachment behavior survives the removal of DevRequester selection. Identity
+// comes from AuthProvider's cookie-session endpoint, just as in Ticket Detail.
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 function makeAttachment(id: number, removed = false): Attachment {
-  return {
-    id,
-    originalFilename: `file-${id}.pdf`,
-    mimeType:         'application/pdf',
-    sizeBytes:        1024 * 512,
-    uploadedAt:       '2026-08-20T09:20:00.000Z',
-    removedAt:        removed ? '2026-08-20T10:00:00.000Z' : null,
-    removalReason:    removed ? 'No longer needed' : null,
-  };
+  return { id, originalFilename: `file-${id}.pdf`, mimeType: 'application/pdf', sizeBytes: 512 * 1024,
+    uploadedAt: '2026-08-20T09:20:00.000Z', removedAt: removed ? '2026-08-20T10:00:00.000Z' : null,
+    removalReason: removed ? 'No longer needed' : null };
 }
-
-function renderSection(attachments: Attachment[], onChange = vi.fn()) {
-  localStorage.setItem('devRequesterId',   '1');
-  localStorage.setItem('devRequesterName', 'Test User');
-  return render(
-    <MemoryRouter>
-      <RequesterProvider>
-        <AttachmentSection
-          ticketId={42}
-          requesterId={1}
-          attachments={attachments}
-          onAttachmentsChange={onChange}
-        />
-      </RequesterProvider>
-    </MemoryRouter>,
-  );
+function AuthenticatedSection({ attachments, onChange }: { attachments: Attachment[]; onChange: (attachments: Attachment[]) => void }) {
+  const { user } = useAuth();
+  return <RequireAuth><AttachmentSection ticketId={42} readOnly={user?.role !== 'REQUESTER'} attachments={attachments} onAttachmentsChange={onChange} /></RequireAuth>;
 }
-
-afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
-
-// ---------------------------------------------------------------------------
-// UI-25 — active attachment shows Download button (AC-09, FR-17)
-// ---------------------------------------------------------------------------
-describe('UI-25 / AC-09 — active attachment shows Download button', () => {
-  it('renders Download button for active attachment', () => {
-    renderSection([makeAttachment(10)]);
-    expect(screen.getByTestId('download-btn-10')).toBeInTheDocument();
+async function setup(attachments: Attachment[], options: { role?: UserRole; mutation?: (url: string, init: RequestInit) => Promise<Response> | Response } = {}) {
+  const user: AuthUser = { id: 1, name: 'Authenticated user', role: options.role ?? 'REQUESTER', mustChangePassword: false };
+  const fetch = vi.fn(async (url: string, init: RequestInit = {}) => {
+    if (url === '/api/auth/me') return json(user);
+    if (options.mutation) return options.mutation(url, init);
+    throw new Error('Unexpected attachment mutation');
   });
+  vi.stubGlobal('fetch', fetch); const onChange = vi.fn();
+  render(<MemoryRouter><AuthProvider><AuthenticatedSection attachments={attachments} onChange={onChange} /></AuthProvider></MemoryRouter>);
+  await screen.findByRole('heading', { name: /^Attachments/ });
+  return { fetch, onChange };
+}
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-  it('renders the attachment row', () => {
-    renderSection([makeAttachment(10)]);
+describe('UI-25 active attachment download and metadata', () => {
+  it('renders the active row, filename, size and named Download control', async () => {
+    await setup([makeAttachment(10)]);
     expect(screen.getByTestId('attachment-row-10')).toBeInTheDocument();
+    expect(screen.getByText(/file-10\.pdf/)).toBeInTheDocument(); expect(screen.getByText(/0.5 MB/)).toBeInTheDocument();
+    expect(screen.getByTestId('download-btn-10')).toHaveAccessibleName('Download file-10.pdf');
   });
-
-  it('renders the filename', () => {
-    renderSection([makeAttachment(10)]);
-    expect(screen.getByText(/file-10\.pdf/i)).toBeInTheDocument();
+  it('opens only the authorized nested download URL with a safe new-window policy', async () => {
+    const open = vi.spyOn(window, 'open').mockReturnValue(null);
+    const { fetch } = await setup([makeAttachment(10)]); fireEvent.click(screen.getByTestId('download-btn-10'));
+    expect(open).toHaveBeenCalledWith('/api/tickets/42/attachments/10/download', '_blank', 'noopener,noreferrer');
+    expect(fetch.mock.calls.filter(([url]) => url !== '/api/auth/me')).toHaveLength(0);
   });
 });
 
-// ---------------------------------------------------------------------------
-// UI-26 — removed attachment shows Removed badge; no Download button (AC-10, FR-16)
-// ---------------------------------------------------------------------------
-describe('UI-26 / AC-10 — removed attachment shows Removed badge, no Download', () => {
-  beforeEach(() => renderSection([makeAttachment(11, true)]));
-
-  it('shows the Removed badge', () => {
-    expect(screen.getByTestId('removed-badge-11')).toBeInTheDocument();
+describe('UI-26 / STYLE-07 removed attachments retain history without file controls', () => {
+  it('shows the Removed badge and reason with warning styling', async () => {
+    await setup([makeAttachment(11, true)]);
     expect(screen.getByTestId('removed-badge-11')).toHaveTextContent('Removed');
+    expect(screen.getByTestId('removed-badge-11').getAttribute('style')).toContain('--color-warning');
+    expect(screen.getByText(/No longer needed/)).toBeInTheDocument();
   });
-
-  it('does not show a Download button', () => {
-    expect(screen.queryByTestId('download-btn-11')).not.toBeInTheDocument();
+  it('exposes neither Download nor Remove for an already removed attachment', async () => {
+    await setup([makeAttachment(11, true)]);
+    expect(screen.queryByTestId('download-btn-11')).not.toBeInTheDocument(); expect(screen.queryByTestId('remove-btn-11')).not.toBeInTheDocument();
   });
-
-  it('shows the removal reason', () => {
-    expect(screen.getByText(/no longer needed/i)).toBeInTheDocument();
-  });
-
-  it('does not show a Remove button for an already-removed attachment', () => {
-    expect(screen.queryByTestId('remove-btn-11')).not.toBeInTheDocument();
+  it('does not mark an active attachment as removed', async () => {
+    await setup([makeAttachment(21)]); expect(screen.queryByTestId('removed-badge-21')).not.toBeInTheDocument();
   });
 });
 
-// ---------------------------------------------------------------------------
-// UI-27 — soft remove dialog requires reason; Confirm disabled until entered (FR-15, BR-18)
-// ---------------------------------------------------------------------------
-describe('UI-27 / BR-18 — soft remove dialog requires reason before Confirm', () => {
-  beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn()); // not called in these tests
-    renderSection([makeAttachment(10)]);
-    fireEvent.click(screen.getByTestId('remove-btn-10'));
-  });
-
-  it('opens the confirmation dialog when Remove is clicked', () => {
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
-
-  it('Confirm button is disabled when reason is empty', () => {
+describe('UI-27 removal confirmation and persistence callbacks', () => {
+  it('opens a labelled confirmation dialog and disables confirm for empty or whitespace reason', async () => {
+    await setup([makeAttachment(10)]); fireEvent.click(screen.getByTestId('remove-btn-10'));
+    expect(screen.getByRole('dialog', { name: 'Remove Attachment' })).toBeInTheDocument();
+    expect(screen.getByTestId('dialog-confirm-btn')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('removal-reason-input'), { target: { value: '   ' } });
     expect(screen.getByTestId('dialog-confirm-btn')).toBeDisabled();
   });
-
-  it('Confirm button becomes enabled when reason is entered', () => {
-    fireEvent.change(screen.getByTestId('removal-reason-input'), {
-      target: { value: 'Uploaded wrong version' },
-    });
-    expect(screen.getByTestId('dialog-confirm-btn')).not.toBeDisabled();
+  it('enables confirm for a meaningful reason and cancels without a mutation', async () => {
+    const { fetch } = await setup([makeAttachment(10)]); fireEvent.click(screen.getByTestId('remove-btn-10'));
+    fireEvent.change(screen.getByTestId('removal-reason-input'), { target: { value: 'Wrong version' } });
+    expect(screen.getByTestId('dialog-confirm-btn')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('dialog-cancel-btn')); expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(fetch.mock.calls.filter(([url]) => url !== '/api/auth/me')).toHaveLength(0);
   });
-
-  it('closes the dialog when Cancel is clicked', () => {
-    fireEvent.click(screen.getByTestId('dialog-cancel-btn'));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  it('supports Escape without deleting the attachment', async () => {
+    const { onChange } = await setup([makeAttachment(10)]); fireEvent.click(screen.getByTestId('remove-btn-10'));
+    fireEvent.keyDown(document, { key: 'Escape' }); expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(onChange).not.toHaveBeenCalled();
   });
-
-  it('closes the dialog when Escape is pressed', () => {
-    fireEvent.keyDown(document, { key: 'Escape' });
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  });
-
-  it('calls the soft-remove API with the reason when Confirm is clicked', async () => {
-    const updated: Attachment = { ...makeAttachment(10), removedAt: '2026-08-20T11:00:00.000Z', removalReason: 'Uploaded wrong version' };
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => updated });
-    vi.stubGlobal('fetch', fetchMock);
-
-    fireEvent.change(screen.getByTestId('removal-reason-input'), {
-      target: { value: 'Uploaded wrong version' },
-    });
+  it('sends the trimmed reason with cookie credentials and preserves other attachment entries', async () => {
+    const updated = { ...makeAttachment(10), removedAt: '2026-08-20T11:00:00.000Z', removalReason: 'Wrong version' };
+    const untouched = makeAttachment(12);
+    const { fetch, onChange } = await setup([makeAttachment(10), untouched], { mutation: () => json(updated) });
+    fireEvent.click(screen.getByTestId('remove-btn-10')); fireEvent.change(screen.getByTestId('removal-reason-input'), { target: { value: '  Wrong version  ' } });
     fireEvent.click(screen.getByTestId('dialog-confirm-btn'));
-
-    // After confirmation the API is called and the dialog closes
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalled();
-    });
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith([updated, untouched]));
+    expect(fetch).toHaveBeenCalledWith('/api/tickets/42/attachments/10', expect.objectContaining({ method: 'DELETE', credentials: 'same-origin', body: JSON.stringify({ removalReason: 'Wrong version' }) }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+  it('retains the reason and dialog when removal fails, without changing the list', async () => {
+    const { onChange } = await setup([makeAttachment(10)], { mutation: () => json({ error: { message: 'Removal failed.' } }, 500) });
+    fireEvent.click(screen.getByTestId('remove-btn-10')); fireEvent.change(screen.getByTestId('removal-reason-input'), { target: { value: 'Wrong version' } });
+    fireEvent.click(screen.getByTestId('dialog-confirm-btn'));
+    await screen.findByRole('alert'); expect(screen.getByTestId('removal-reason-input')).toHaveValue('Wrong version');
+    expect(screen.getByRole('dialog')).toBeInTheDocument(); expect(onChange).not.toHaveBeenCalled();
   });
 });
 
-// ---------------------------------------------------------------------------
-// UI-28 — Add Attachment button disabled when 5 active attachments exist (BR-17, AC-08)
-// ---------------------------------------------------------------------------
-describe('UI-28 / BR-17 — Add Attachment button disabled at limit', () => {
-  it('Add Attachment button is disabled when 5 active attachments exist', () => {
-    const atLimit = Array.from({ length: 5 }, (_, i) => makeAttachment(i + 1));
-    renderSection(atLimit);
-    const btn = screen.getByTestId('add-attachment-btn');
-    expect(btn).toBeDisabled();
+describe('UI-28 active-count upload limits and validation', () => {
+  it('disables adding at five active attachments with an accessible maximum explanation', async () => {
+    await setup(Array.from({ length: 5 }, (_, index) => makeAttachment(index + 1)));
+    expect(screen.getByTestId('add-attachment-btn')).toBeDisabled();
+    expect(screen.getByTestId('add-attachment-btn')).toHaveAttribute('title', expect.stringMatching(/maximum/i));
   });
-
-  it('Add Attachment button is enabled when fewer than 5 active attachments', () => {
-    renderSection([makeAttachment(1), makeAttachment(2)]);
-    expect(screen.getByTestId('add-attachment-btn')).not.toBeDisabled();
+  it('does not count removed attachments against the limit', async () => {
+    await setup([...Array.from({ length: 4 }, (_, index) => makeAttachment(index + 1)), makeAttachment(5, true)]);
+    expect(screen.getByTestId('add-attachment-btn')).toBeEnabled(); expect(screen.getByRole('heading', { name: 'Attachments (4)' })).toBeInTheDocument();
   });
-
-  it('disabled button shows tooltip about the limit', () => {
-    const atLimit = Array.from({ length: 5 }, (_, i) => makeAttachment(i + 1));
-    renderSection(atLimit);
-    expect(screen.getByTestId('add-attachment-btn').title).toMatch(/maximum/i);
+  it('shows a clear empty state and allows the first attachment', async () => {
+    await setup([]); expect(screen.getByText('No attachments yet.')).toBeInTheDocument(); expect(screen.getByTestId('add-attachment-btn')).toBeEnabled();
   });
-
-  it('Add Attachment button is enabled when some attachments are removed (removed do not count)', () => {
-    // 4 active + 1 removed = should still be enabled
-    const attachments = [
-      ...Array.from({ length: 4 }, (_, i) => makeAttachment(i + 1)),
-      makeAttachment(5, true), // removed — does not count toward limit
-    ];
-    renderSection(attachments);
-    expect(screen.getByTestId('add-attachment-btn')).not.toBeDisabled();
+  it('rejects unsupported file types before sending any upload', async () => {
+    const { fetch, onChange } = await setup([]);
+    fireEvent.change(screen.getByTestId('attachment-file-input'), { target: { files: [new File(['bad'], 'run.exe', { type: 'application/octet-stream' })] } });
+    expect(await screen.findByTestId('upload-error')).toHaveTextContent(/not an allowed file type/);
+    expect(fetch.mock.calls.filter(([url]) => url !== '/api/auth/me')).toHaveLength(0); expect(onChange).not.toHaveBeenCalled();
+  });
+  it('rejects files over five MB before sending any upload', async () => {
+    const { fetch } = await setup([]);
+    fireEvent.change(screen.getByTestId('attachment-file-input'), { target: { files: [new File([new Uint8Array(5 * 1024 * 1024 + 1)], 'large.pdf', { type: 'application/pdf' })] } });
+    expect(await screen.findByTestId('upload-error')).toHaveTextContent(/exceeds the 5 MB/);
+    expect(fetch.mock.calls.filter(([url]) => url !== '/api/auth/me')).toHaveLength(0);
+  });
+  it('uploads multipart file data with cookie credentials and appends the server attachment', async () => {
+    const added = makeAttachment(13); const existing = makeAttachment(10);
+    const { fetch, onChange } = await setup([existing], { mutation: () => json(added, 201) });
+    const file = new File(['pdf-content'], 'new.pdf', { type: 'application/pdf' });
+    fireEvent.change(screen.getByTestId('attachment-file-input'), { target: { files: [file] } });
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith([existing, added]));
+    const call = fetch.mock.calls.find(([url]) => url === '/api/tickets/42/attachments')!;
+    expect(call[1]).toMatchObject({ method: 'POST', credentials: 'same-origin' });
+    expect(call[1].body).toBeInstanceOf(FormData); expect((call[1].body as FormData).get('file')).toEqual(file);
+  });
+  it('keeps the existing list intact on an upload failure', async () => {
+    const { onChange } = await setup([makeAttachment(10)], { mutation: () => json({ error: { message: 'Upload failed.' } }, 500) });
+    fireEvent.change(screen.getByTestId('attachment-file-input'), { target: { files: [new File(['pdf'], 'new.pdf', { type: 'application/pdf' })] } });
+    await screen.findByTestId('upload-error'); expect(screen.getByTestId('attachment-row-10')).toBeInTheDocument(); expect(onChange).not.toHaveBeenCalled();
   });
 });
 
-// ---------------------------------------------------------------------------
-// STYLE-07 — Removed badge uses warning/amber styling
-// ---------------------------------------------------------------------------
-describe('STYLE-07 — Removed badge styling', () => {
-  it('Removed badge renders with "Removed" text', () => {
-    renderSection([makeAttachment(20, true)]);
-    const badge = screen.getByTestId('removed-badge-20');
-    expect(badge).toHaveTextContent('Removed');
-  });
-
-  it('active attachment does not show a Removed badge', () => {
-    renderSection([makeAttachment(21)]);
-    expect(screen.queryByTestId('removed-badge-21')).not.toBeInTheDocument();
+describe('authenticated staff/admin attachment access remains read-only', () => {
+  it.each(['IT_STAFF', 'ADMINISTRATOR'] as const)('allows %s downloads without upload or remove controls', async role => {
+    const { fetch } = await setup([makeAttachment(10), makeAttachment(11, true)], { role });
+    expect(screen.getByTestId('download-btn-10')).toBeInTheDocument(); expect(screen.getByTestId('removed-badge-11')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-attachment-btn')).not.toBeInTheDocument(); expect(screen.queryByTestId('remove-btn-10')).not.toBeInTheDocument();
+    expect(fetch.mock.calls.filter(([url]) => url !== '/api/auth/me')).toHaveLength(0);
   });
 });

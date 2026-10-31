@@ -1,8 +1,12 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { RequesterProvider } from '../context/RequesterContext.js';
 import MyTickets from '../pages/MyTickets.js';
+
+// Authenticated sessions supersede Lab 2's caller-selected/localStorage identity.
+vi.mock('../context/AuthContext.js', () => ({ useAuth: () => ({
+  user: { id: 1, name: 'Somchai Jaidee', role: 'REQUESTER', mustChangePassword: false }, loading: false,
+}) }));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,29 +30,23 @@ function mockList(tickets: object[], total?: number) {
   const pagination = { page: 1, pageSize: 10, total: total ?? tickets.length, totalPages: Math.ceil((total ?? tickets.length) / 10) || 1 };
   vi.stubGlobal(
     'fetch',
-    vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => [] })                          // /api/categories
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ data: tickets, pagination }) }), // /api/tickets
+    vi.fn((url: string) => Promise.resolve({ ok: true, json: async () => url === '/api/categories' ? [] : { data: tickets, pagination } })),
   );
 }
 
 function renderMyTickets() {
-  localStorage.setItem('devRequesterId',   '1');
-  localStorage.setItem('devRequesterName', 'Somchai Jaidee');
   return render(
     <MemoryRouter initialEntries={['/tickets']}>
-      <RequesterProvider>
         <Routes>
           <Route path="/tickets"     element={<MyTickets />} />
           <Route path="/tickets/new" element={<div data-testid="create-ticket-page" />} />
           <Route path="/tickets/:id" element={<div data-testid="ticket-detail-page" />} />
         </Routes>
-      </RequesterProvider>
     </MemoryRouter>,
   );
 }
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 // ---------------------------------------------------------------------------
 // UI-15 — displays list for selected requester (AC-05)
@@ -63,8 +61,10 @@ describe('UI-15 / AC-05 — ticket list renders for selected requester', () => {
 
   it('renders the correct ticket numbers', async () => {
     renderMyTickets();
-    expect(await screen.findByText('TKT-2026-000001')).toBeInTheDocument();
-    expect(screen.getByText('TKT-2026-000002')).toBeInTheDocument();
+    const table = await screen.findByTestId('tickets-table');
+    // Feature 22 adds mobile cards alongside the desktop table; scope each assertion.
+    expect(within(table).getByText('TKT-2026-000001')).toBeInTheDocument();
+    expect(within(table).getByText('TKT-2026-000002')).toBeInTheDocument();
   });
 });
 
@@ -75,9 +75,7 @@ describe('UI-16 — loading state', () => {
   it('shows loading spinner while tickets are fetching', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: async () => [] })
-        .mockImplementationOnce(() => new Promise(() => {})), // never resolves
+      vi.fn((url: string) => url === '/api/categories' ? Promise.resolve({ ok: true, json: async () => [] }) : new Promise(() => {})),
     );
     renderMyTickets();
     expect(await screen.findByRole('status')).toBeInTheDocument();
@@ -129,9 +127,7 @@ describe('UI-19 — API failure state', () => {
   it('shows error state with retry when API fails', async () => {
     vi.stubGlobal(
       'fetch',
-      vi.fn()
-        .mockResolvedValueOnce({ ok: true, json: async () => [] })
-        .mockResolvedValueOnce({ ok: false, json: async () => ({}) }),
+      vi.fn((url: string) => Promise.resolve(url === '/api/categories' ? { ok: true, json: async () => [] } : { ok: false, status: 500, json: async () => ({}) })),
     );
     renderMyTickets();
     expect(await screen.findByTestId('tickets-error')).toBeInTheDocument();
@@ -145,11 +141,7 @@ describe('UI-19 — API failure state', () => {
 describe('UI-20 / AC-12 — search input triggers filtered API call', () => {
   it('passes search param to the tickets API', async () => {
     const emptyPagination = { page: 1, pageSize: 10, total: 0, totalPages: 1 };
-    const fetchMock = vi.fn()
-      // First call = categories (returns array)
-      .mockResolvedValueOnce({ ok: true, json: async () => [] })
-      // All subsequent calls = tickets endpoint
-      .mockResolvedValue({ ok: true, json: async () => ({ data: [], pagination: emptyPagination }) });
+    const fetchMock = vi.fn((url: string) => Promise.resolve({ ok: true, json: async () => url === '/api/categories' ? [] : { data: [], pagination: emptyPagination } }));
     vi.stubGlobal('fetch', fetchMock);
 
     renderMyTickets();
@@ -171,13 +163,11 @@ describe('UI-20 / AC-12 — search input triggers filtered API call', () => {
 // ---------------------------------------------------------------------------
 describe('UI-21 / AC-13 — category filter triggers API call', () => {
   it('passes categoryId param to the tickets API', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => [{ id: 2, name: 'Hardware' }] })
-      .mockResolvedValue({ ok: true, json: async () => ({ data: [], pagination: { page: 1, pageSize: 10, total: 0, totalPages: 1 } }) });
+    const fetchMock = vi.fn((url: string) => Promise.resolve({ ok: true, json: async () => url === '/api/categories' ? [{ id: 2, name: 'Hardware' }] : { data: [], pagination: { page: 1, pageSize: 10, total: 0, totalPages: 1 } } }));
     vi.stubGlobal('fetch', fetchMock);
 
     renderMyTickets();
-    await waitFor(() => screen.getByTestId('category-filter'));
+    await screen.findByRole('option', { name: 'Hardware' });
 
     fireEvent.change(screen.getByTestId('category-filter'), { target: { value: '2' } });
 
@@ -195,15 +185,13 @@ describe('UI-21 / AC-13 — category filter triggers API call', () => {
 // ---------------------------------------------------------------------------
 describe('UI-22 / AC-15 — pagination navigates pages', () => {
   it('calls API with page=2 when page 2 button is clicked', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce({ ok: true, json: async () => [] })
-      .mockResolvedValue({
+    const fetchMock = vi.fn((url: string) => Promise.resolve({
         ok: true,
-        json: async () => ({
+        json: async () => url === '/api/categories' ? [] : ({
           data: Array.from({ length: 10 }, (_, i) => makeTicket(i + 1)),
-          pagination: { page: 1, pageSize: 10, total: 25, totalPages: 3 },
+          pagination: { page: Number(new URL(url, 'http://localhost').searchParams.get('page') ?? '1'), pageSize: 10, total: 25, totalPages: 3 },
         }),
-      });
+      }));
     vi.stubGlobal('fetch', fetchMock);
 
     renderMyTickets();
@@ -228,7 +216,8 @@ describe('UI-23 / FR-12 — clicking a ticket row navigates to Ticket Detail', (
     mockList([makeTicket(42)]);
     renderMyTickets();
     const row = await screen.findByTestId('ticket-row-42');
-    fireEvent.click(row);
+    // Feature 22 uses an explicit keyboard-accessible ticket link instead of a clickable row.
+    fireEvent.click(within(row).getByRole('link', { name: 'TKT-2026-000042' }));
     expect(await screen.findByTestId('ticket-detail-page')).toBeInTheDocument();
   });
 });

@@ -1,18 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Hoist all mocks before imports
 // ---------------------------------------------------------------------------
 const {
+  userFindUnique,
   ticketCreate,
-  devRequesterFindFirst,
+  userFindFirst,
   categoryFindFirst,
   relatedSystemFindFirst,
   ticketCount,
   transactionFn,
 } = vi.hoisted(() => ({
+  userFindUnique: vi.fn(),
   ticketCreate: vi.fn(),
-  devRequesterFindFirst: vi.fn(),
+  userFindFirst: vi.fn(),
   categoryFindFirst: vi.fn(),
   relatedSystemFindFirst: vi.fn(),
   ticketCount: vi.fn(),
@@ -22,7 +24,7 @@ const {
 vi.mock('../../src/lib/prisma.js', () => ({
   prisma: {
     ticket: { create: ticketCreate, count: ticketCount },
-    devRequester: { findFirst: devRequesterFindFirst },
+    user: { findFirst: userFindFirst, findUnique: userFindUnique },
     category: { findFirst: categoryFindFirst },
     relatedSystem: { findFirst: relatedSystemFindFirst },
     $transaction: transactionFn,
@@ -31,12 +33,21 @@ vi.mock('../../src/lib/prisma.js', () => ({
 
 import request from 'supertest';
 import app from '../../src/app.js';
+import { signToken } from '../../src/lib/auth.js';
+
+// Lab 3 replaced caller-selected requester IDs with verified cookie sessions.
+// Keep requireAuth/requirePasswordChanged real; mock only their database reads.
+const requesterCookie = (id = 1) => `tkt_token=${signToken(id, 'REQUESTER')}`;
+beforeEach(() => {
+  vi.stubEnv('JWT_SECRET', 'lab2-authenticated-regression-fixture-only');
+  userFindUnique.mockImplementation(async ({ where }: { where: { id: number } }) => ({ id: where.id, isActive: true, mustChangePassword: false, role: 'REQUESTER' }));
+});
+afterEach(() => vi.unstubAllEnvs());
 
 // ---------------------------------------------------------------------------
 // Shared fixtures
 // ---------------------------------------------------------------------------
 const validBody = {
-  requesterId: 1,
   categoryId: 2,
   relatedSystemId: 3,
   summary: 'Laptop battery drains quickly',
@@ -68,7 +79,7 @@ const mockTicket = {
 };
 
 function setupHappyPath() {
-  devRequesterFindFirst.mockResolvedValue(mockRequester);
+  userFindFirst.mockResolvedValue(mockRequester);
   categoryFindFirst.mockResolvedValue(mockCategory);
   relatedSystemFindFirst.mockResolvedValue(mockSystem);
   // $transaction calls the callback with the prisma tx object
@@ -92,17 +103,25 @@ describe('POST /api/tickets', () => {
     beforeEach(setupHappyPath);
 
     it('returns 201 on success', async () => {
-      const res = await request(app).post('/api/tickets').send(validBody);
+      const res = await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send(validBody);
       expect(res.status).toBe(201);
+      expect(ticketCreate.mock.calls[0][0].data.requesterId).toBe(1);
+    });
+
+    it('ignores a forged requesterId and creates only for the authenticated requester', async () => {
+      const res = await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send({ ...validBody, requesterId: 99 });
+      expect(res.status).toBe(201);
+      expect(ticketCreate.mock.calls[0][0].data.requesterId).toBe(1);
+      expect(userFindFirst.mock.calls[0][0].where.id).toBe(1);
     });
 
     it('returns ticketNumber matching TKT-YYYY-NNNNNN', async () => {
-      const res = await request(app).post('/api/tickets').send(validBody);
+      const res = await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send(validBody);
       expect(res.body.ticketNumber).toMatch(/^TKT-\d{4}-\d{6}$/);
     });
 
     it('returns id, requesterId, categoryId, and summary in response', async () => {
-      const res = await request(app).post('/api/tickets').send(validBody);
+      const res = await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send(validBody);
       expect(res.body).toMatchObject({
         id: 42,
         requesterId: 1,
@@ -113,19 +132,19 @@ describe('POST /api/tickets', () => {
 
     // API-02: currentStatus is NEW
     it('API-02 — response contains currentStatus: NEW', async () => {
-      const res = await request(app).post('/api/tickets').send(validBody);
+      const res = await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send(validBody);
       expect(res.body.currentStatus).toBe('NEW');
     });
 
     // API-03: ticketDate is set by server
     it('API-03 — response contains ticketDate as a timestamp', async () => {
-      const res = await request(app).post('/api/tickets').send(validBody);
+      const res = await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send(validBody);
       expect(res.body.ticketDate).toBeTruthy();
       expect(new Date(res.body.ticketDate).toString()).not.toBe('Invalid Date');
     });
 
     it('includes empty attachments array', async () => {
-      const res = await request(app).post('/api/tickets').send(validBody);
+      const res = await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send(validBody);
       expect(res.body.attachments).toEqual([]);
     });
   });
@@ -136,7 +155,7 @@ describe('POST /api/tickets', () => {
 
     it('returns 400 with summary field error', async () => {
       const res = await request(app)
-        .post('/api/tickets')
+        .post('/api/tickets').set('Cookie', requesterCookie())
         .send({ ...validBody, summary: '' });
       expect(res.status).toBe(400);
       expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -144,7 +163,7 @@ describe('POST /api/tickets', () => {
     });
 
     it('does not call ticket.create when summary is empty', async () => {
-      await request(app).post('/api/tickets').send({ ...validBody, summary: '' });
+      await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send({ ...validBody, summary: '' });
       expect(ticketCreate).not.toHaveBeenCalled();
     });
   });
@@ -155,7 +174,7 @@ describe('POST /api/tickets', () => {
 
     it('returns 400 with summary field error', async () => {
       const res = await request(app)
-        .post('/api/tickets')
+        .post('/api/tickets').set('Cookie', requesterCookie())
         .send({ ...validBody, summary: 'a'.repeat(201) });
       expect(res.status).toBe(400);
       expect(res.body.error.fields.summary).toMatch(/200/);
@@ -168,7 +187,7 @@ describe('POST /api/tickets', () => {
 
     it('returns 400 with description field error', async () => {
       const res = await request(app)
-        .post('/api/tickets')
+        .post('/api/tickets').set('Cookie', requesterCookie())
         .send({ ...validBody, description: '' });
       expect(res.status).toBe(400);
       expect(res.body.error.fields.description).toBeTruthy();
@@ -181,7 +200,7 @@ describe('POST /api/tickets', () => {
 
     it('returns 400 with requestedPriority field error', async () => {
       const res = await request(app)
-        .post('/api/tickets')
+        .post('/api/tickets').set('Cookie', requesterCookie())
         .send({ ...validBody, requestedPriority: 'URGENT' });
       expect(res.status).toBe(400);
       expect(res.body.error.fields.requestedPriority).toBeTruthy();
@@ -191,7 +210,7 @@ describe('POST /api/tickets', () => {
   // API-08: non-existent categoryId
   describe('API-08 — non-existent categoryId', () => {
     beforeEach(() => {
-      devRequesterFindFirst.mockResolvedValue(mockRequester);
+      userFindFirst.mockResolvedValue(mockRequester);
       categoryFindFirst.mockResolvedValue(null); // category not found
       relatedSystemFindFirst.mockResolvedValue(mockSystem);
       transactionFn.mockImplementation(async (fn: (tx: unknown) => Promise<string>) =>
@@ -202,7 +221,7 @@ describe('POST /api/tickets', () => {
 
     it('returns 400 with categoryId field error', async () => {
       const res = await request(app)
-        .post('/api/tickets')
+        .post('/api/tickets').set('Cookie', requesterCookie())
         .send({ ...validBody, categoryId: 9999 });
       expect(res.status).toBe(400);
       expect(res.body.error.fields.categoryId).toMatch(/not found/i);
@@ -212,7 +231,7 @@ describe('POST /api/tickets', () => {
   // API-09: all fields invalid returns all errors at once (AC-23)
   describe('API-09 / AC-23 — multiple invalid fields', () => {
     it('returns all field errors in a single response', async () => {
-      const res = await request(app).post('/api/tickets').send({
+      const res = await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send({
         requesterId: 0,
         categoryId: 0,
         summary: '',
@@ -225,7 +244,7 @@ describe('POST /api/tickets', () => {
     });
 
     it('does not expose a stack trace', async () => {
-      const res = await request(app).post('/api/tickets').send({});
+      const res = await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send({});
       expect(JSON.stringify(res.body)).not.toContain('stack');
     });
   });
@@ -233,14 +252,20 @@ describe('POST /api/tickets', () => {
   // Server error safe response
   describe('server error handling', () => {
     beforeEach(() => {
-      devRequesterFindFirst.mockRejectedValue(new Error('DB down'));
+      userFindFirst.mockRejectedValue(new Error('DB down'));
     });
 
     it('returns 500 with safe INTERNAL_ERROR envelope', async () => {
-      const res = await request(app).post('/api/tickets').send(validBody);
+      const res = await request(app).post('/api/tickets').set('Cookie', requesterCookie()).send(validBody);
       expect(res.status).toBe(500);
       expect(res.body.error.code).toBe('INTERNAL_ERROR');
       expect(JSON.stringify(res.body)).not.toContain('DB down');
     });
+  });
+
+  it('requires a real session before creation and does not write for anonymous callers', async () => {
+    const res = await request(app).post('/api/tickets').send(validBody);
+    expect(res.status).toBe(401); expect(res.body.error.code).toBe('UNAUTHENTICATED');
+    expect(ticketCreate).not.toHaveBeenCalled();
   });
 });

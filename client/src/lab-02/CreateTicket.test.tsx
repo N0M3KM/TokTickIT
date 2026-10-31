@@ -1,8 +1,13 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { RequesterProvider } from '../context/RequesterContext.js';
 import CreateTicket from '../pages/CreateTicket.js';
+
+// Lab 3 replaced the manual requester selector with an authenticated identity.
+// Keep the real page/API boundary; only the existing session context is mocked.
+vi.mock('../context/AuthContext.js', () => ({ useAuth: () => ({
+  user: { id: 1, name: 'Somchai Jaidee', role: 'REQUESTER', mustChangePassword: false }, loading: false,
+}) }));
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -20,22 +25,18 @@ function mockRefData() {
 }
 
 function renderCreateTicket() {
-  localStorage.setItem('devRequesterId',   '1');
-  localStorage.setItem('devRequesterName', 'Somchai Jaidee');
   return render(
     <MemoryRouter initialEntries={['/tickets/new']}>
-      <RequesterProvider>
         <Routes>
           <Route path="/tickets/new" element={<CreateTicket />} />
           <Route path="/tickets"     element={<div data-testid="my-tickets-page">My Tickets</div>} />
           <Route path="/tickets/:id" element={<div data-testid="ticket-detail-page">Ticket Detail</div>} />
         </Routes>
-      </RequesterProvider>
     </MemoryRouter>,
   );
 }
 
-afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 // ---------------------------------------------------------------------------
 // UI-07 — submit without Summary shows field-level error; API not called
@@ -150,6 +151,12 @@ describe('UI-10 / AC-01 — successful submission displays Ticket Number', () =>
 
     expect(await screen.findByTestId('ticket-number-display')).toHaveTextContent('TKT-2026-000042');
     expect(screen.getByTestId('success-panel')).toBeInTheDocument();
+    const post = vi.mocked(fetch).mock.calls.find(([url, init]) => url === '/api/tickets' && init?.method === 'POST');
+    expect(post).toBeDefined();
+    expect(post![1]?.credentials).toBe('same-origin');
+    expect(JSON.parse(String(post![1]?.body))).toEqual({ categoryId: 1, summary: 'Battery issue', description: 'Drains fast', requestedPriority: 'MEDIUM' });
+    // Session ownership replaces the superseded caller-selected requesterId.
+    expect(JSON.parse(String(post![1]?.body))).not.toHaveProperty('requesterId');
   });
 });
 
