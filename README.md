@@ -222,4 +222,23 @@ The browser path is real HTTP -> API -> Prisma -> PostgreSQL; it does not mock
 action or workflow writes. Diagnostic clusters remain in the OS temporary folder.
 
 Feature branches target `lab04-staging`; the owner performs reviewed PR merges.
-Feature 22 preparation remains separate until Feature 21 is integrated.
+Feature 22 integration requires the reviewed Feature 21 merge first.
+
+## Lab 4 requester dashboard (Feature 22)
+
+Feature 22 integrates the prepared requester metrics after Feature 21 PR #50.
+Requesters now land on `/dashboard`; staff/admin retain their existing landing
+until Feature 23. `/api/dashboards/requester` returns owned counts, bounded safe
+previews and the Bangkok recent window. My Tickets preserves dashboard filters,
+exact date ranges and paging through reload and Back, with mobile cards.
+
+```powershell
+npm run test:workflow-db
+npm run test:requester-dashboard-browser
+```
+
+Both commands use generated disposable PostgreSQL data, not the configured app
+database. The browser command launches its API/client and uses installed Chrome.
+See [Feature 22 verification](artifacts/lab-04/feature-22-verification.md) for
+SQL reconciliation, screenshots, performance measurements and remaining legacy
+test failures. No additional database migration is introduced by Feature 22.

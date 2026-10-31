@@ -11,6 +11,7 @@ import relatedSystemsRouter from './routes/relatedSystems.js';
 import ticketOperationsRouter from './routes/ticketOperations.js';
 import ticketWorkflowRouter from './routes/ticketWorkflow.js';
 import actionsRouter from './routes/actions.js';
+import dashboardsRouter from './routes/dashboards.js';
 import usersRouter from './routes/users.js';
 import ticketsRouter from './routes/tickets.js';
 import attachmentsRouter from './routes/attachments.js';
@@ -43,6 +44,7 @@ app.use('/api/related-systems', requireAuth, requirePasswordChanged, relatedSyst
 
 // ── Protected routes — require valid JWT + password already changed ──────────
 const protect = [requireAuth, requirePasswordChanged];
+app.use('/api/dashboards', (_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); }, ...protect, dashboardsRouter);
 app.use('/api/tickets', ...protect);
 app.use('/api/tickets', (req, res, next) => {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
