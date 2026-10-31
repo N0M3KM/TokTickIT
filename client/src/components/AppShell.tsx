@@ -10,7 +10,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState('');
   if (!user) return null;
   const links = user.role === 'REQUESTER'
-    ? [{ to: '/tickets', label: 'My Tickets' }, { to: '/tickets/new', label: 'Create Ticket' }]
+    ? [{ to: '/dashboard', label: 'Dashboard' }, { to: '/tickets', label: 'My Tickets' }, { to: '/tickets/new', label: 'Create Ticket' }]
     : user.role === 'IT_STAFF' ? [{ to: '/queue', label: 'Ticket Queue' }]
     : [{ to: '/admin/users', label: 'User Management' }, { to: '/queue', label: 'Ticket Queue' }];
 
@@ -22,6 +22,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return <>
+    <a className="lab3-skip-link" href="#main-content">Skip to main content</a>
     <header className="lab3-header" style={{ background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center' }}>
       <NavLink to="/" style={{ color: '#fff', fontWeight: 750, fontSize: 23, textDecoration: 'none' }}>TokTickIT</NavLink>
       <nav className="lab3-nav" aria-label="Main navigation">{links.map((link) => <NavLink key={link.to} end to={link.to} style={({ isActive }) => ({ color: '#fff', textDecoration: 'none', padding: '6px 0', borderBottom: isActive ? '2px solid white' : '2px solid transparent' })}>{link.label}</NavLink>)}</nav>
@@ -31,7 +32,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <button className="btn btn-sm btn-outline-light" disabled={busy} onClick={() => void signOut()}>{busy ? 'Signing out...' : 'Sign Out'}</button>
       </div>
     </header>
-    <main style={{ maxWidth: 'var(--max-content-width)', margin: '0 auto', padding: '24px 16px' }}>
+    <main id="main-content" tabIndex={-1} style={{ maxWidth: 'var(--max-content-width)', margin: '0 auto', padding: '24px 16px' }}>
       {error && <p className="alert alert-danger" role="alert">{error}</p>}{children}
     </main>
   </>;
