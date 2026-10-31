@@ -155,3 +155,22 @@ Record command, branch/SHA, runtime, database/seed identity, start time, exit co
 Complete every checkbox in [ui-spec.md](ui-spec.md) section 9; attach screenshot path, actual viewport, role, state, reviewer and result. Capture real Actions Taken create/edit/complete/cancel/validation/conflict, dashboard zero/nonzero/loading/failure/forbidden and workflow gate states. Use `artifacts/lab-04/screenshots/staff-dashboard/`, `requester-dashboard/`, `actions-taken/`, `ticket-workflow/`; regression captures may have their own subfolder.
 
 Store sanitized command logs/DB reconciliation/recovery output in `artifacts/lab-04/test-results/`, and an evidence index with main SHA in `artifacts/lab-04/README.md` during feature24. Do not commit credentials, session cookies, real personal data, copied databases or uploaded private files. All implementation test files and evidence directories remain to be created by their assigned features.
+
+## Feature 23 observed execution, 31 October 2026
+
+The planned filenames/statuses above preserve the original engineering plan.
+Observed Feature 23 implementations and evidence are recorded in
+[feature-23-verification.md](../../artifacts/lab-04/feature-23-verification.md):
+
+- API-13/API-16 and staff UNIT-05/06/08 portions: `staff-dashboard.unit.test.ts`
+  and `staff-dashboard.db.test.ts`, with independent SQL and scoped queue totals.
+- UI-07 and safe responsive states: `features/staff-dashboard/Dashboard.test.tsx`
+  and `features/staff-queue/StaffTicketQueue.test.tsx`.
+- E2E-03 role flow: `e2e/lab-04/staff-dashboard.spec.ts`, real API/PostgreSQL on
+  desktop/tablet/mobile/320px, plus retained requester browser regression.
+- PERF-01 both-endpoint local smoke: exact isolated 1000-ticket/3000-action case
+  inside `staff-dashboard.db.test.ts`, five warmups/thirty measured requests,
+  bounded JSON and constant logged SQL counts; environment/p50/p95 in evidence.
+
+These observed passes do not close Feature 24 or the six legacy Lab 2 client
+collection failures, and do not invent peer review or final-main evidence.

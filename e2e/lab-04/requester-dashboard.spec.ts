@@ -82,11 +82,13 @@ test('owned dashboard totals, real drill-downs, Back/reload and role-safe landin
   await page.request.post('/api/auth/logout');
   const staffLogin = await page.request.post('/api/auth/login', { data: { email: process.env.DASHBOARD_STAFF_EMAIL, password: process.env.DASHBOARD_BROWSER_PASSWORD } });
   expect(staffLogin.ok()).toBe(true); await page.goto('/dashboard');
-  await expect(page).toHaveURL(/\/queue$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByText('Operational overview', { exact: true })).toBeVisible();
   expect((await page.request.get('/api/dashboards/requester')).status()).toBe(403);
   await page.request.post('/api/auth/logout');
   const adminLogin = await page.request.post('/api/auth/login', { data: { email: process.env.DASHBOARD_ADMIN_EMAIL, password: process.env.DASHBOARD_BROWSER_PASSWORD } });
   expect(adminLogin.ok()).toBe(true); await page.goto('/dashboard');
-  await expect(page).toHaveURL(/\/admin\/users$/);
+  await expect(page).toHaveURL(/\/dashboard$/);
+  await expect(page.getByRole('link', { name: 'User Management', exact: true })).toBeVisible();
   expect(errors).toEqual([]);
 });

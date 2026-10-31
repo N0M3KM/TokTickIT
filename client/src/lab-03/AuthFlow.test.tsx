@@ -21,6 +21,11 @@ function app(path = '/tickets/new') {
 }
 
 describe('Lab 3 authentication navigation', () => {
+  it('preserves a local action hash through the authentication return path', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({}, 401))); app('/tickets/new#action-44');
+    await screen.findByRole('heading', { name: 'Sign in to your account' });
+    expect(screen.getByTestId('location')).toHaveTextContent('/login?redirectAfterLogin=%2Ftickets%2Fnew%23action-44');
+  });
   it('redirects unauthenticated ticket creation to sign-in with a return URL', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(json({}, 401))); app();
     await screen.findByRole('heading', { name: 'Sign in to your account' });

@@ -13,7 +13,8 @@
     "test": "npm run test --workspace=client && npm run test --workspace=server",
     "test:workflow-db": "node scripts/test-workflow-db.mjs",
     "test:workflow-browser": "node scripts/test-workflow-db.mjs -- scripts/test-workflow-browser.mjs",
-    "test:requester-dashboard-browser": "node scripts/test-workflow-db.mjs -- scripts/test-requester-dashboard-browser.mjs"
+    "test:requester-dashboard-browser": "node scripts/test-workflow-db.mjs -- scripts/test-requester-dashboard-browser.mjs",
+    "test:staff-dashboard-browser": "node scripts/test-workflow-db.mjs -- scripts/test-staff-dashboard-browser.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.1",

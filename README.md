@@ -242,3 +242,25 @@ database. The browser command launches its API/client and uses installed Chrome.
 See [Feature 22 verification](artifacts/lab-04/feature-22-verification.md) for
 SQL reconciliation, screenshots, performance measurements and remaining legacy
 test failures. No additional database migration is introduced by Feature 22.
+
+## Lab 4 staff and administrator dashboard (Feature 23)
+
+Staff and administrators now land on `/dashboard` as well. The protected
+`/api/dashboards/staff` endpoint returns operational counts, complete status and
+active-priority buckets, bounded recent tickets and current-user assigned actions.
+Action counts and distinct related-ticket counts are separate; individual action
+links open/focus their exact Ticket Detail action, including later list pages.
+Queue drill-downs preserve filters, ranges and paging in the URL.
+
+```powershell
+npm run test:workflow-db
+npm run test:staff-dashboard-browser
+npm run test:requester-dashboard-browser
+```
+
+The disposable database suite measures both dashboard endpoints on exactly
+1000 tickets and 3000 actions; both met the local p95/payload smoke budgets.
+See [Feature 23 verification](artifacts/lab-04/feature-23-verification.md) for
+counts, SQL reconciliation, performance and real browser screenshots. No new
+database migration is introduced by Feature 23. Feature 24 release gates remain
+separate; the owner reviews and merges Feature 23 into `lab04-staging` first.
