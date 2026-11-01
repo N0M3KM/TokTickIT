@@ -1,0 +1,23 @@
+.actions-taken { background: var(--color-surface); color: var(--color-text-primary); border: 1px solid var(--color-border); border-radius: var(--border-radius-control); padding: var(--space-lg); overflow-wrap: anywhere; }
+.actions-taken h2 { font-size: 18px; }
+.actions-taken h3 { margin: 0; font-size: 16px; }
+.actions-taken__list, .actions-taken__history { padding: 0; list-style: none; }
+.actions-taken__list > li { border-top: 1px solid var(--color-border); padding-block: var(--space-md); scroll-margin-top: var(--header-height); }
+.actions-taken header, .actions-taken nav { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-md); }
+.actions-taken header { justify-content: space-between; }
+.actions-taken button, .actions-taken select, .actions-taken summary { min-height: 44px; }
+.actions-taken button, .actions-taken select { border: 1px solid var(--color-editable-border); border-radius: var(--border-radius-control); background: var(--color-surface); color: var(--color-primary); padding: var(--space-sm) var(--space-md); }
+.actions-taken button:disabled { background: var(--color-disabled-bg); color: var(--color-text-secondary); }
+.actions-taken summary { cursor: pointer; padding-block: var(--space-sm); }
+.actions-taken nav { margin-top: var(--space-md); }
+.actions-taken nav label { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-sm); }
+.actions-taken dd { margin: 0 0 var(--space-sm); white-space: pre-wrap; }
+.actions-taken dt { font-weight: 600; }
+.actions-taken__summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-md); }
+.actions-taken__detail { background: var(--color-readonly-bg); padding: var(--space-md); margin-top: var(--space-md); }
+.actions-taken__badge { border-radius: var(--border-radius-badge); padding: var(--space-xs) var(--space-sm); background: var(--badge-closed-bg); color: var(--badge-closed-text); }
+.actions-taken__badge--in_progress { background: var(--badge-progress-bg); color: var(--badge-progress-text); }
+.actions-taken__badge--completed { background: var(--badge-open-bg); color: var(--badge-open-text); }
+.actions-taken__history li { border-top: 1px solid var(--color-border); padding-block: var(--space-sm); }
+@media (max-width: 991px) { .actions-taken__summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) { .actions-taken { padding: var(--space-md); } .actions-taken__summary { grid-template-columns: minmax(0, 1fr); } .actions-taken nav { align-items: stretch; flex-direction: column; } }

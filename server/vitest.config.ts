@@ -11,7 +11,9 @@ export default defineConfig({
   },
   test: {
     include: ['tests/**/*.test.ts'],
-    exclude: ['tests/**/lab1-staging-docs/**'],
+    // Real database cases require the disposable-cluster harness:
+    // npm run test:workflow-db (from repository root).
+    exclude: ['tests/**/lab1-staging-docs/**', 'tests/**/*.db.test.ts'],
     environment: 'node',
   },
 });

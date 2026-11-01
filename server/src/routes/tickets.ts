@@ -1,8 +1,11 @@
 import { Router, Request, Response } from 'express';
-import { Priority, Prisma } from '@prisma/client';
+import { Priority, Prisma, TicketStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma.js';
 import { requireRole } from '../middleware/requireAuth.js';
 import { generateTicketNumber } from '../lib/ticketNumber.js';
+import { allowedTicketTransitions, readResolutionGate } from '../lib/ticketWorkflow.js';
+import { buildRequesterDrilldown } from '../features/requester-dashboard-preparation/filters.js';
+import { DashboardInputError } from '../features/requester-dashboard-preparation/window.js';
 import {
   trimField,
   validateSummary,
@@ -39,6 +42,10 @@ const TICKET_SELECT = {
   itPriority: true,
   ticketOwnerId: true,
   requesterResolvedAt: true,
+  version: true,
+  resolvedAt: true,
+  reopenedAt: true,
+  resolutionTimeEstimated: true,
   ticketOwner: { select: { id: true, name: true } },
   ticketDate: true,
   createdAt: true,
@@ -61,6 +68,10 @@ function formatTicket(t: {
   itPriority: Priority;
   ticketOwnerId: number | null;
   requesterResolvedAt: Date | null;
+  version: number;
+  resolvedAt: Date | null;
+  reopenedAt: Date | null;
+  resolutionTimeEstimated: boolean;
   ticketOwner: { id: number; name: string } | null;
   ticketDate: Date;
   createdAt: Date;
@@ -86,6 +97,10 @@ function formatTicket(t: {
     ticketOwnerId: t.ticketOwnerId,
     ticketOwner: t.ticketOwner,
     requesterResolvedAt: t.requesterResolvedAt,
+    version: t.version,
+    resolvedAt: t.resolvedAt,
+    reopenedAt: t.reopenedAt,
+    resolutionTimeEstimated: t.resolutionTimeEstimated,
     ticketDate: t.ticketDate,
     createdAt: t.createdAt,
     updatedAt: t.updatedAt,
@@ -222,10 +237,29 @@ router.post('/', requireRole('REQUESTER'), async (req: Request, res: Response) =
 // api-spec.md §3.2, §8, §9
 // ---------------------------------------------------------------------------
 router.get('/', requireRole('REQUESTER'), async (req: Request, res: Response) => {
+  res.set('Cache-Control', 'no-store');
   try {
     // BR-03: use authenticated identity — ignore any client-supplied requesterId
     const requesterIdNum = req.user!.id;
     const { search, categoryId, priority, status, sort, order, page, pageSize } = req.query;
+    const dashboardParameters = Object.fromEntries(['dashboardFilter', 'from', 'to']
+      .filter(key => Object.prototype.hasOwnProperty.call(req.query, key)).map(key => [key, req.query[key]]));
+    const dashboard = buildRequesterDrilldown(requesterIdNum, dashboardParameters);
+    const dashboardFilter = req.query.dashboardFilter;
+    if (dashboardFilter !== undefined) {
+      const allowed = new Set(['search', 'categoryId', 'priority', 'status', 'sort', 'order', 'page', 'pageSize', 'dashboardFilter', 'from', 'to']);
+      if (Object.entries(req.query).some(([key, value]) => !allowed.has(key) || typeof value !== 'string')) throw new DashboardInputError();
+      const positive = (value: unknown) => typeof value === 'string' && /^[1-9]\d*$/.test(value) && Number.isSafeInteger(Number(value));
+      if (page !== undefined && !positive(page)) throw new DashboardInputError();
+      if (pageSize !== undefined && (!positive(pageSize) || ![10, 25, 50].includes(Number(pageSize)))) throw new DashboardInputError();
+      if (!Number.isSafeInteger((Number(page ?? 1) - 1) * Number(pageSize ?? 10))) throw new DashboardInputError();
+      if (categoryId !== undefined && !positive(categoryId)) throw new DashboardInputError();
+      if (priority !== undefined && !Object.values(Priority).includes(priority as Priority)) throw new DashboardInputError();
+      if (status !== undefined && !Object.values(TicketStatus).includes(status as TicketStatus)) throw new DashboardInputError();
+      if (sort !== undefined && !(sort === 'resolvedAt' && dashboardFilter === 'recentlyResolved')
+        && !['ticketNumber', 'createdAt', 'updatedAt'].includes(sort as string)) throw new DashboardInputError();
+      if (order !== undefined && !['asc', 'desc'].includes(order as string)) throw new DashboardInputError();
+    }
 
     // --- Pagination (BR-24: clamp to valid values) ---
     const validPageSizes = [10, 25, 50];
@@ -242,7 +276,7 @@ router.get('/', requireRole('REQUESTER'), async (req: Request, res: Response) =>
     const sortDir = order === 'asc' ? 'asc' : 'desc';
 
     // Build the order-by array with the chosen direction
-    const orderBy: Prisma.TicketOrderByWithRelationInput[] = Object.keys(
+    let orderBy: Prisma.TicketOrderByWithRelationInput[] = Object.keys(
       validSorts[sortField][0],
     ).length
       ? validSorts[sortField].map((o) => {
@@ -250,6 +284,7 @@ router.get('/', requireRole('REQUESTER'), async (req: Request, res: Response) =>
           return { [key]: sortDir } as Prisma.TicketOrderByWithRelationInput;
         })
       : [{ createdAt: sortDir }];
+    if (dashboardFilter === 'recentlyResolved' || dashboardFilter === 'recentlyUpdated') orderBy = dashboard.orderBy;
 
     // --- Filters ---
     const where: Prisma.TicketWhereInput = {
@@ -280,10 +315,11 @@ router.get('/', requireRole('REQUESTER'), async (req: Request, res: Response) =>
     }
 
     // --- Count + query ---
-    const [total, tickets] = await Promise.all([
-      prisma.ticket.count({ where }),
-      prisma.ticket.findMany({
-        where,
+    const scopedWhere: Prisma.TicketWhereInput = dashboardFilter === undefined ? where : { AND: [where, dashboard.where] };
+    const readList = async (client: Prisma.TransactionClient | typeof prisma) => Promise.all([
+      client.ticket.count({ where: scopedWhere }),
+      client.ticket.findMany({
+        where: scopedWhere,
         select: {
           id: true,
           ticketNumber: true,
@@ -296,6 +332,8 @@ router.get('/', requireRole('REQUESTER'), async (req: Request, res: Response) =>
           ticketDate: true,
           createdAt: true,
           updatedAt: true,
+          resolvedAt: true,
+          resolutionTimeEstimated: true,
           category: { select: { name: true } },
           relatedSystem: { select: { name: true } },
         },
@@ -304,6 +342,9 @@ router.get('/', requireRole('REQUESTER'), async (req: Request, res: Response) =>
         take: pageSizeNum,
       }),
     ]);
+    const [total, tickets] = dashboardFilter === undefined
+      ? await readList(prisma)
+      : await prisma.$transaction(readList, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, maxWait: 5000, timeout: 10000 });
 
     const totalPages = Math.ceil(total / pageSizeNum) || 1;
 
@@ -322,10 +363,13 @@ router.get('/', requireRole('REQUESTER'), async (req: Request, res: Response) =>
         ticketDate: t.ticketDate,
         createdAt: t.createdAt,
         updatedAt: t.updatedAt,
+        resolvedAt: t.resolvedAt,
+        resolutionTimeEstimated: t.resolutionTimeEstimated,
       })),
       pagination: { page: pageNum, pageSize: pageSizeNum, total, totalPages },
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof DashboardInputError) return res.status(400).json({ error: { code: error.code, message: error.message } });
     return internalError(res);
   }
 });
@@ -374,9 +418,11 @@ router.get('/:id', async (req: Request, res: Response) => {
       });
     }
 
-    return res.status(200).json({
+    return res.status(200).set('Cache-Control', 'no-store').json({
       ...formatTicket(ticket),
       attachments: ticket.attachments,
+      allowedTransitions: allowedTicketTransitions(ticket.currentStatus, req.user!.role),
+      resolutionGate: await readResolutionGate(prisma, ticket),
     });
   } catch {
     return internalError(res);

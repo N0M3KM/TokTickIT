@@ -9,3 +9,10 @@ coverage/
 
 
 server/uploads/
+
+# Transient runner output; sanitized screenshots/evidence remain tracked separately.
+/uploads/
+/playwright-report/
+/artifacts/lab-02/screenshots/test-output/
+/artifacts/lab-04/browser-output/
+/artifacts/lab-04/*-browser-output/

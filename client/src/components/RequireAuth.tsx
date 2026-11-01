@@ -6,10 +6,10 @@ export default function RequireAuth({ children, roles }: { children: React.React
   const location = useLocation();
   if (loading) return <p role="status">Loading your session...</p>;
   if (!user) {
-    const returnTo = `${location.pathname}${location.search}`;
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
     return <Navigate to={`/login?redirectAfterLogin=${encodeURIComponent(returnTo)}`} replace state={{ from: returnTo }} />;
   }
-  if (user.mustChangePassword) return <Navigate to={`/change-password?redirectAfterLogin=${encodeURIComponent(location.pathname + location.search)}`} replace />;
+  if (user.mustChangePassword) return <Navigate to={`/change-password?redirectAfterLogin=${encodeURIComponent(location.pathname + location.search + location.hash)}`} replace />;
   if (roles && !roles.includes(user.role)) return <Navigate to="/forbidden" replace />;
   return <>{children}</>;
 }

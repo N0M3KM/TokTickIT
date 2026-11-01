@@ -4,7 +4,7 @@ import './App.css';
 import './styles/lab3.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
+import { createBrowserRouter, createRoutesFromElements, Navigate, Route, RouterProvider, useNavigate } from 'react-router-dom';
 import { AuthProvider, type UserRole, useAuth } from './context/AuthContext.js';
 import AppShell from './components/AppShell.js';
 import RequireAuth from './components/RequireAuth.js';
@@ -16,13 +16,31 @@ import TicketDetail from './pages/TicketDetail.js';
 import StaffTicketQueue from './pages/StaffTicketQueue.js';
 import UserManagement from './pages/UserManagement.js';
 import AccountHelp from './pages/AccountHelp.js';
+import RequesterDashboard from './features/requester-dashboard/Dashboard.js';
+import StaffDashboard from './features/staff-dashboard/Dashboard.js';
 
 function Home() {
   const { user } = useAuth();
-  if (user?.role === 'REQUESTER') return <Navigate to="/tickets" replace />;
-  if (user?.role === 'IT_STAFF') return <Navigate to="/queue" replace />;
-  if (user?.role === 'ADMINISTRATOR') return <Navigate to="/admin/users" replace />;
+  if (user?.role === 'REQUESTER') return <Navigate to="/dashboard" replace />;
+  if (user?.role === 'IT_STAFF' || user?.role === 'ADMINISTRATOR') return <Navigate to="/dashboard" replace />;
   return <Forbidden />;
+}
+
+function DashboardLanding() {
+  const { user } = useAuth();
+  if (user?.role === 'REQUESTER') return <RequesterDashboard key={user.id} />;
+  if (user?.role === 'IT_STAFF' || user?.role === 'ADMINISTRATOR') return <StaffDashboard key={`${user.id}-${user.role}`} />;
+  return <Forbidden />;
+}
+
+function OwnedTicketList() {
+  const { user } = useAuth();
+  return <MyTickets key={user?.id} />;
+}
+
+function StaffQueue() {
+  const { user } = useAuth();
+  return <StaffTicketQueue key={`${user?.id}-${user?.role}`} />;
 }
 
 function Protected({ children, roles }: { children: React.ReactNode; roles?: UserRole[] }) {
@@ -34,19 +52,22 @@ function Forbidden() {
   return <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 16 }}><section style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 6, padding: 32, textAlign: 'center' }}><h1>403 — Access denied</h1><p>You do not have permission to view this page.</p><button onClick={() => navigate('/')} style={{ border: 'none', borderRadius: 6, padding: '10px 16px', background: 'var(--color-primary)', color: '#fff' }}>Return to Home</button></section></main>;
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode><BrowserRouter><AuthProvider><Routes>
+const router = createBrowserRouter(createRoutesFromElements(<>
     <Route path="/login" element={<Login />} />
     <Route path="/forgot-password" element={<AccountHelp />} />
     <Route path="/sign-up" element={<AccountHelp createAccount />} />
     <Route path="/change-password" element={<ChangePassword />} />
     <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
-    <Route path="/tickets" element={<Protected roles={['REQUESTER']}><MyTickets /></Protected>} />
+    <Route path="/dashboard" element={<Protected roles={['REQUESTER', 'IT_STAFF', 'ADMINISTRATOR']}><DashboardLanding /></Protected>} />
+    <Route path="/tickets" element={<Protected roles={['REQUESTER']}><OwnedTicketList /></Protected>} />
     <Route path="/tickets/new" element={<Protected roles={['REQUESTER']}><CreateTicket /></Protected>} />
     <Route path="/tickets/:id" element={<Protected roles={['REQUESTER', 'IT_STAFF', 'ADMINISTRATOR']}><TicketDetail /></Protected>} />
-    <Route path="/queue" element={<Protected roles={['IT_STAFF', 'ADMINISTRATOR']}><StaffTicketQueue /></Protected>} />
+    <Route path="/queue" element={<Protected roles={['IT_STAFF', 'ADMINISTRATOR']}><StaffQueue /></Protected>} />
     <Route path="/admin/users" element={<Protected roles={['ADMINISTRATOR']}><UserManagement /></Protected>} />
     <Route path="/forbidden" element={<Forbidden />} />
     <Route path="*" element={<Navigate to="/" replace />} />
-  </Routes></AuthProvider></BrowserRouter></React.StrictMode>,
+  </>));
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode><AuthProvider><RouterProvider router={router} /></AuthProvider></React.StrictMode>,
 );

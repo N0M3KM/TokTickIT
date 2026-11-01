@@ -1,20 +1,30 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Hoist mocks before any imports
 // ---------------------------------------------------------------------------
-const { relatedSystemFindMany } = vi.hoisted(() => ({
-  relatedSystemFindMany: vi.fn(),
+const { relatedSystemFindMany, userFindUnique } = vi.hoisted(() => ({
+  relatedSystemFindMany: vi.fn(), userFindUnique: vi.fn(),
 }));
 
 vi.mock('../../src/lib/prisma.js', () => ({
   prisma: {
     relatedSystem: { findMany: relatedSystemFindMany },
+    user: { findUnique: userFindUnique },
   },
 }));
 
 import request from 'supertest';
 import app from '../../src/app.js';
+import { signToken } from '../../src/lib/auth.js';
+
+const activeUser = { id: 1, isActive: true, mustChangePassword: false, role: 'REQUESTER' };
+beforeEach(() => {
+  vi.clearAllMocks(); vi.stubEnv('JWT_SECRET', 'lab2-systems-fixture-secret');
+  userFindUnique.mockResolvedValue(activeUser);
+});
+afterEach(() => vi.unstubAllEnvs());
+const cookie = () => `tkt_token=${signToken(1, 'REQUESTER')}`;
 
 const activeSystems = [
   { id: 1, name: 'Campus Wi-Fi'         },
@@ -26,9 +36,21 @@ const activeSystems = [
   { id: 7, name: 'VPN'                  },
 ];
 
+describe('related systems authentication regression', () => {
+  it('does not query related systems without a session', async () => {
+    const response = await request(app).get('/api/related-systems');
+    expect(response.status).toBe(401); expect(relatedSystemFindMany).not.toHaveBeenCalled();
+  });
+  it('blocks a required password change before returning related systems', async () => {
+    userFindUnique.mockResolvedValue({ ...activeUser, mustChangePassword: true });
+    const response = await request(app).get('/api/related-systems').set('Cookie', cookie());
+    expect(response.status).toBe(403); expect(response.body.error.code).toBe('PASSWORD_CHANGE_REQUIRED'); expect(relatedSystemFindMany).not.toHaveBeenCalled();
+  });
+});
+
 describe('GET /api/related-systems', () => {
   // -------------------------------------------------------------------------
-  // Happy path — returns active systems sorted by name asc (api-spec §2.3)
+  // Happy path โ€” returns active systems sorted by name asc (api-spec ยง2.3)
   // -------------------------------------------------------------------------
   describe('active related systems returned', () => {
     beforeEach(() => {
@@ -36,7 +58,7 @@ describe('GET /api/related-systems', () => {
     });
 
     it('returns 200 with an array of related systems', async () => {
-      const res = await request(app).get('/api/related-systems');
+      const res = await request(app).get('/api/related-systems').set('Cookie', cookie());
 
       expect(res.status).toBe(200);
       expect(res.headers['content-type']).toMatch(/application\/json/);
@@ -44,7 +66,7 @@ describe('GET /api/related-systems', () => {
     });
 
     it('calls Prisma with isActive:true, id+name select, and name asc order', async () => {
-      await request(app).get('/api/related-systems');
+      await request(app).get('/api/related-systems').set('Cookie', cookie());
 
       expect(relatedSystemFindMany).toHaveBeenCalledWith({
         where: { isActive: true },
@@ -54,7 +76,7 @@ describe('GET /api/related-systems', () => {
     });
 
     it('returns id and name for each system', async () => {
-      const res = await request(app).get('/api/related-systems');
+      const res = await request(app).get('/api/related-systems').set('Cookie', cookie());
 
       expect(res.body).toEqual(activeSystems);
       res.body.forEach((s: unknown) => {
@@ -64,14 +86,14 @@ describe('GET /api/related-systems', () => {
     });
 
     it('returns all 7 seeded related systems', async () => {
-      const res = await request(app).get('/api/related-systems');
+      const res = await request(app).get('/api/related-systems').set('Cookie', cookie());
 
       expect(res.body).toHaveLength(7);
     });
   });
 
   // -------------------------------------------------------------------------
-  // Empty list — returns [] not 404
+  // Empty list โ€” returns [] not 404
   // -------------------------------------------------------------------------
   describe('empty related systems list', () => {
     beforeEach(() => {
@@ -79,7 +101,7 @@ describe('GET /api/related-systems', () => {
     });
 
     it('returns 200 with an empty array when no active systems exist', async () => {
-      const res = await request(app).get('/api/related-systems');
+      const res = await request(app).get('/api/related-systems').set('Cookie', cookie());
 
       expect(res.status).toBe(200);
       expect(res.body).toEqual([]);
@@ -87,7 +109,7 @@ describe('GET /api/related-systems', () => {
   });
 
   // -------------------------------------------------------------------------
-  // Server error — safe 500 envelope, no stack trace
+  // Server error โ€” safe 500 envelope, no stack trace
   // -------------------------------------------------------------------------
   describe('server error handling', () => {
     beforeEach(() => {
@@ -95,7 +117,7 @@ describe('GET /api/related-systems', () => {
     });
 
     it('returns 500 with INTERNAL_ERROR code', async () => {
-      const res = await request(app).get('/api/related-systems');
+      const res = await request(app).get('/api/related-systems').set('Cookie', cookie());
 
       expect(res.status).toBe(500);
       expect(res.body).toEqual({
@@ -107,7 +129,7 @@ describe('GET /api/related-systems', () => {
     });
 
     it('does not expose a stack trace or raw error message', async () => {
-      const res = await request(app).get('/api/related-systems');
+      const res = await request(app).get('/api/related-systems').set('Cookie', cookie());
 
       expect(JSON.stringify(res.body)).not.toContain('stack');
       expect(JSON.stringify(res.body)).not.toContain('Connection refused');

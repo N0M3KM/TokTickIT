@@ -1,0 +1,12 @@
+.ticket-workflow { overflow-wrap: anywhere; }
+.ticket-workflow fieldset { border: 0; padding: 0; min-width: 0; }
+.ticket-workflow button, .ticket-workflow select { min-height: 44px; }
+.ticket-workflow button { padding: var(--space-sm) var(--space-md); margin: var(--space-xs); border: 1px solid var(--color-primary); border-radius: var(--border-radius-control); color: var(--color-primary); background: var(--color-surface); }
+.ticket-workflow button:disabled { background: var(--color-disabled-bg); color: var(--color-text-secondary); }
+.ticket-workflow__error { color: var(--color-error); }
+.ticket-workflow__conflict, .ticket-workflow section[aria-label="Latest ticket values"] { padding: var(--space-md); background: var(--color-readonly-bg); margin-block: var(--space-md); }
+.ticket-workflow__history { border-top: 1px solid var(--color-border); margin-top: var(--space-lg); padding-top: var(--space-md); }
+.ticket-workflow__history h3 { font-size: 16px; }
+.ticket-workflow__history nav { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-sm); }
+.ticket-workflow__history li { padding-block: var(--space-sm); }
+@media (max-width: 767px) { .ticket-workflow .lab3-fields, .ticket-workflow__history nav { display: flex; flex-direction: column; align-items: stretch; } }

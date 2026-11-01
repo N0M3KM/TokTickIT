@@ -186,3 +186,81 @@ For an installed Chrome browser, set `$env:PLAYWRIGHT_CHANNEL='chrome'` before r
 Branch flow: `main → lab3-staging → feature/*`. Review feature branches before integration; this update does not merge or publish a release.
 
 Lab 1 and Lab 2 documents remain under `docs/lab-01/` and `docs/lab-02/` as historical records. Lab 3 uses authenticated identity in place of their development-only selector.
+
+## Lab 4 ticket workflow (Feature 21)
+
+The workflow increment adds Actions Taken persistence, versioned ticket writes,
+resolution/reopening gates and append-only shared history. See the
+[Lab 4 contract](docs/lab-04/specification.md) and
+[Feature 21 verification](artifacts/lab-04/feature-21-verification.md).
+
+Before running an existing development/deployment database with this version,
+apply the additive migration and regenerate the Prisma client:
+
+```powershell
+npx prisma migrate deploy --schema server/prisma/schema.prisma
+npm run prisma:generate --workspace=server
+```
+
+Migration preserves prior data and estimates legacy RESOLVED/CLOSED timestamps
+from the previous UTC updatedAt; no legacy work or audit events are invented.
+Existing owner/priority/status/advisory API clients must send `expectedVersion`.
+The bundled UI does so and preserves drafts on conflicts.
+
+```powershell
+npm run test:workflow-db
+npm run test:workflow-browser
+```
+
+These commands create a disposable PostgreSQL 16 cluster with generated local
+credentials and synthetic data, override DATABASE_URL for child processes,
+verify populated migration preservation and stop the cluster afterward. They do
+not migrate the configured application database. The pinned `embedded-postgres`
+development dependency supplies PostgreSQL binaries; browser checks use installed
+Chrome and launch their own API/Vite servers. No Docker service is required.
+The browser path is real HTTP -> API -> Prisma -> PostgreSQL; it does not mock
+action or workflow writes. Diagnostic clusters remain in the OS temporary folder.
+
+Feature branches target `lab04-staging`; the owner performs reviewed PR merges.
+Feature 22 integration requires the reviewed Feature 21 merge first.
+
+## Lab 4 requester dashboard (Feature 22)
+
+Feature 22 integrates the prepared requester metrics after Feature 21 PR #50.
+Requesters now land on `/dashboard`; staff/admin retain their existing landing
+until Feature 23. `/api/dashboards/requester` returns owned counts, bounded safe
+previews and the Bangkok recent window. My Tickets preserves dashboard filters,
+exact date ranges and paging through reload and Back, with mobile cards.
+
+```powershell
+npm run test:workflow-db
+npm run test:requester-dashboard-browser
+```
+
+Both commands use generated disposable PostgreSQL data, not the configured app
+database. The browser command launches its API/client and uses installed Chrome.
+See [Feature 22 verification](artifacts/lab-04/feature-22-verification.md) for
+SQL reconciliation, screenshots, performance measurements and remaining legacy
+test failures. No additional database migration is introduced by Feature 22.
+
+## Lab 4 staff and administrator dashboard (Feature 23)
+
+Staff and administrators now land on `/dashboard` as well. The protected
+`/api/dashboards/staff` endpoint returns operational counts, complete status and
+active-priority buckets, bounded recent tickets and current-user assigned actions.
+Action counts and distinct related-ticket counts are separate; individual action
+links open/focus their exact Ticket Detail action, including later list pages.
+Queue drill-downs preserve filters, ranges and paging in the URL.
+
+```powershell
+npm run test:workflow-db
+npm run test:staff-dashboard-browser
+npm run test:requester-dashboard-browser
+```
+
+The disposable database suite measures both dashboard endpoints on exactly
+1000 tickets and 3000 actions; both met the local p95/payload smoke budgets.
+See [Feature 23 verification](artifacts/lab-04/feature-23-verification.md) for
+counts, SQL reconciliation, performance and real browser screenshots. No new
+database migration is introduced by Feature 23. Feature 24 release gates remain
+separate; the owner reviews and merges Feature 23 into `lab04-staging` first.

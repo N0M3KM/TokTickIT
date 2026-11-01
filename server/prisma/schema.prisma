@@ -35,6 +35,26 @@ enum UserRole {
   ADMINISTRATOR
 }
 
+enum ActionStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ActionEventType {
+  CREATE
+  EDIT
+  STATUS
+}
+
+enum WorkflowEventKind {
+  OWNER
+  PRIORITY
+  STATUS
+  REQUESTER_INDICATION
+}
+
 // ---------------------------------------------------------------------------
 // Reference tables (unchanged from Lab 2)
 // ---------------------------------------------------------------------------
@@ -77,6 +97,11 @@ model User {
   ownedTickets       Ticket[]        @relation("TicketOwner")
   publicComments     PublicComment[]
   internalNotes      InternalNote[]
+  performedActions   ActionTaken[] @relation("ActionPerformer")
+  assignedActions    ActionTaken[] @relation("ActionAssignee")
+  updatedActions     ActionTaken[] @relation("ActionEditor")
+  actionRevisions    ActionRevision[]
+  workflowEvents     TicketWorkflowEvent[]
 
   @@index([email])
   @@index([role])
@@ -103,6 +128,10 @@ model Ticket {
   ticketDate           DateTime     @default(now())
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
+  version              Int          @default(1)
+  resolvedAt           DateTime?    @db.Timestamptz(3)
+  reopenedAt           DateTime?    @db.Timestamptz(3)
+  resolutionTimeEstimated Boolean   @default(false)
 
   requester      User           @relation("TicketRequester", fields: [requesterId],   references: [id])
   ticketOwner    User?          @relation("TicketOwner",     fields: [ticketOwnerId], references: [id])
@@ -111,6 +140,8 @@ model Ticket {
   attachments    Attachment[]
   publicComments PublicComment[]
   internalNotes  InternalNote[]
+  actions        ActionTaken[]
+  workflowEvents TicketWorkflowEvent[]
 
   @@index([requesterId])
   @@index([ticketOwnerId])
@@ -120,6 +151,67 @@ model Ticket {
   @@index([itPriority])
   @@index([categoryId])
   @@index([createdAt])
+  @@index([requesterId, currentStatus])
+  @@index([requesterId, updatedAt, id])
+  @@index([currentStatus, resolvedAt, id])
+  @@index([updatedAt, id])
+  @@index([ticketOwnerId, currentStatus])
+}
+
+model ActionTaken {
+  id Int @id @default(autoincrement())
+  ticketId Int
+  actionAt DateTime @db.Timestamptz(3)
+  description String
+  result String?
+  performedById Int
+  assigneeId Int
+  followUpRequired Boolean @default(false)
+  followUpNote String?
+  attachmentNotes String?
+  status ActionStatus @default(PLANNED)
+  cancellationReason String?
+  version Int @default(1)
+  updatedById Int
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+  idempotencyKey String @db.Uuid
+  requestFingerprint String
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  performedBy User @relation("ActionPerformer", fields: [performedById], references: [id], onDelete: Restrict)
+  assignee User @relation("ActionAssignee", fields: [assigneeId], references: [id], onDelete: Restrict)
+  updatedBy User @relation("ActionEditor", fields: [updatedById], references: [id], onDelete: Restrict)
+  revisions ActionRevision[]
+  @@unique([performedById, ticketId, idempotencyKey])
+  @@index([ticketId, actionAt, id])
+  @@index([assigneeId, status, actionAt, id])
+}
+
+model ActionRevision {
+  id Int @id @default(autoincrement())
+  actionId Int
+  version Int
+  editorId Int
+  eventType ActionEventType
+  snapshot Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  action ActionTaken @relation(fields: [actionId], references: [id], onDelete: Restrict)
+  editor User @relation(fields: [editorId], references: [id], onDelete: Restrict)
+  @@unique([actionId, version])
+  @@index([actionId, createdAt, id])
+}
+
+model TicketWorkflowEvent {
+  id Int @id @default(autoincrement())
+  ticketId Int
+  actorId Int
+  kind WorkflowEventKind
+  before Json
+  after Json
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Restrict)
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+  @@index([ticketId, createdAt, id])
 }
 
 // ---------------------------------------------------------------------------

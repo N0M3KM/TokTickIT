@@ -6,12 +6,14 @@ import path from 'path';
 // Hoist mocks — must be before any imports that touch prisma
 // ---------------------------------------------------------------------------
 const {
+  userFindUnique,
   ticketFindUnique,
   attachmentCount,
   attachmentCreate,
   attachmentFindFirst,
   attachmentUpdate,
 } = vi.hoisted(() => ({
+  userFindUnique: vi.fn(),
   ticketFindUnique:    vi.fn(),
   attachmentCount:     vi.fn(),
   attachmentCreate:    vi.fn(),
@@ -21,6 +23,7 @@ const {
 
 vi.mock('../../src/lib/prisma.js', () => ({
   prisma: {
+    user: { findUnique: userFindUnique },
     ticket:     { findUnique: ticketFindUnique },
     attachment: {
       count:     attachmentCount,
@@ -33,6 +36,16 @@ vi.mock('../../src/lib/prisma.js', () => ({
 
 import request from 'supertest';
 import app from '../../src/app.js';
+import { signToken } from '../../src/lib/auth.js';
+
+// Lab 3 replaced caller-selected requester IDs with verified cookie sessions.
+// Keep requireAuth/requirePasswordChanged real; mock only their database reads.
+const requesterCookie = (id = 1) => `tkt_token=${signToken(id, 'REQUESTER')}`;
+beforeEach(() => {
+  vi.stubEnv('JWT_SECRET', 'lab2-authenticated-regression-fixture-only');
+  userFindUnique.mockImplementation(async ({ where }: { where: { id: number } }) => ({ id: where.id, isActive: true, mustChangePassword: false, role: 'REQUESTER' }));
+});
+afterEach(() => vi.unstubAllEnvs());
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -83,8 +96,7 @@ describe('POST /api/tickets/:id/attachments', () => {
   // API-19: valid upload returns 201
   it('API-19 — valid PDF upload returns 201 with attachment metadata', async () => {
     const res = await request(app)
-      .post('/api/tickets/1/attachments')
-      .field('requesterId', '1')
+      .post('/api/tickets/1/attachments').set('Cookie', requesterCookie())
       .attach('file', Buffer.from('pdf content'), {
         filename: 'report.pdf',
         contentType: 'application/pdf',
@@ -103,8 +115,7 @@ describe('POST /api/tickets/:id/attachments', () => {
   // API-20: disallowed MIME type → 415
   it('API-20 — disallowed MIME type returns 415', async () => {
     const res = await request(app)
-      .post('/api/tickets/1/attachments')
-      .field('requesterId', '1')
+      .post('/api/tickets/1/attachments').set('Cookie', requesterCookie())
       .attach('file', Buffer.from('bad'), {
         filename: 'virus.exe',
         contentType: 'application/octet-stream',
@@ -118,8 +129,7 @@ describe('POST /api/tickets/:id/attachments', () => {
   it('API-21 — file over 5 MB returns 400 FILE_TOO_LARGE', async () => {
     const oversized = Buffer.alloc(6 * 1024 * 1024, 'x');
     const res = await request(app)
-      .post('/api/tickets/1/attachments')
-      .field('requesterId', '1')
+      .post('/api/tickets/1/attachments').set('Cookie', requesterCookie())
       .attach('file', oversized, {
         filename: 'huge.pdf',
         contentType: 'application/pdf',
@@ -134,8 +144,7 @@ describe('POST /api/tickets/:id/attachments', () => {
     attachmentCount.mockResolvedValue(5);
 
     const res = await request(app)
-      .post('/api/tickets/1/attachments')
-      .field('requesterId', '1')
+      .post('/api/tickets/1/attachments').set('Cookie', requesterCookie())
       .attach('file', Buffer.from('pdf'), {
         filename: 'extra.pdf',
         contentType: 'application/pdf',
@@ -150,8 +159,8 @@ describe('POST /api/tickets/:id/attachments', () => {
     ticketFindUnique.mockResolvedValue({ id: 1, requesterId: 99 });
 
     const res = await request(app)
-      .post('/api/tickets/1/attachments')
-      .field('requesterId', '1')
+      .post('/api/tickets/1/attachments').set('Cookie', requesterCookie())
+      .field('requesterId', '99') // A forged multipart identity cannot override JWT requester 1.
       .attach('file', Buffer.from('pdf'), {
         filename: 'file.pdf',
         contentType: 'application/pdf',
@@ -188,8 +197,8 @@ describe('GET /api/tickets/:id/attachments/:attachmentId/download', () => {
   // API-24: download active attachment → 200
   it('API-24 — active attachment download returns 200 with correct Content-Type', async () => {
     const res = await request(app).get(
-      '/api/tickets/1/attachments/10/download?requesterId=1',
-    );
+      '/api/tickets/1/attachments/10/download',
+    ).set('Cookie', requesterCookie());
 
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toMatch(/application\/pdf/);
@@ -200,8 +209,8 @@ describe('GET /api/tickets/:id/attachments/:attachmentId/download', () => {
     attachmentFindFirst.mockResolvedValue(removedAttachment);
 
     const res = await request(app).get(
-      '/api/tickets/1/attachments/11/download?requesterId=1',
-    );
+      '/api/tickets/1/attachments/11/download',
+    ).set('Cookie', requesterCookie());
 
     expect(res.status).toBe(410);
     expect(res.body.error.code).toBe('ATTACHMENT_REMOVED');
@@ -226,8 +235,8 @@ describe('DELETE /api/tickets/:id/attachments/:attachmentId', () => {
   // API-26: valid soft-remove → 200
   it('API-26 — valid soft-remove returns 200 with removedAt set', async () => {
     const res = await request(app)
-      .delete('/api/tickets/1/attachments/10')
-      .send({ requesterId: 1, removalReason: 'Uploaded wrong file version.' });
+      .delete('/api/tickets/1/attachments/10').set('Cookie', requesterCookie())
+      .send({ removalReason: 'Uploaded wrong file version.' });
 
     expect(res.status).toBe(200);
     expect(res.body.removedAt).not.toBeNull();
@@ -236,8 +245,8 @@ describe('DELETE /api/tickets/:id/attachments/:attachmentId', () => {
 
   it('API-26 — storageFilename is not in soft-remove response', async () => {
     const res = await request(app)
-      .delete('/api/tickets/1/attachments/10')
-      .send({ requesterId: 1, removalReason: 'Test reason' });
+      .delete('/api/tickets/1/attachments/10').set('Cookie', requesterCookie())
+      .send({ removalReason: 'Test reason' });
 
     expect(JSON.stringify(res.body)).not.toContain('storageFilename');
   });
@@ -245,8 +254,8 @@ describe('DELETE /api/tickets/:id/attachments/:attachmentId', () => {
   // API-27: missing removalReason → 400
   it('API-27 — missing removalReason returns 400 VALIDATION_ERROR', async () => {
     const res = await request(app)
-      .delete('/api/tickets/1/attachments/10')
-      .send({ requesterId: 1, removalReason: '' });
+      .delete('/api/tickets/1/attachments/10').set('Cookie', requesterCookie())
+      .send({ removalReason: '' });
 
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
@@ -258,8 +267,8 @@ describe('DELETE /api/tickets/:id/attachments/:attachmentId', () => {
     ticketFindUnique.mockResolvedValue({ id: 1, requesterId: 99 });
 
     const res = await request(app)
-      .delete('/api/tickets/1/attachments/10')
-      .send({ requesterId: 1, removalReason: 'Reason' });
+      .delete('/api/tickets/1/attachments/10').set('Cookie', requesterCookie())
+      .send({ requesterId: 99, removalReason: 'Reason' });
 
     expect(res.status).toBe(403);
     expect(res.body.error.code).toBe('FORBIDDEN');
@@ -270,8 +279,8 @@ describe('DELETE /api/tickets/:id/attachments/:attachmentId', () => {
     attachmentFindFirst.mockResolvedValue(removedAttachment);
 
     const res = await request(app)
-      .delete('/api/tickets/1/attachments/11')
-      .send({ requesterId: 1, removalReason: 'Trying to remove again' });
+      .delete('/api/tickets/1/attachments/11').set('Cookie', requesterCookie())
+      .send({ removalReason: 'Trying to remove again' });
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('ALREADY_REMOVED');
