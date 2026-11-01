@@ -1,6 +1,6 @@
 # Lab 4 Engineering Contract
 
-**Status:** Engineering contract for owner review. Originally drafted 27 September 2026; publication authorized 5 October 2026 on `feature18/lab04-spec`. Issues #40-46 track logical Features 18-24. No passing application tests, peer approvals or merges are claimed by this documentation increment.
+**Status updated 1 November 2026:** Features 18?22 and 24 are integrated through PRs #47?52; Feature 23 followed in PR #53. Current staging is `096c456`. Main remains the Lab 3 release at `fea7caf`; no final-main Lab 4 checks are claimed. Historical contract and planned-test language below describe the original drafting stage; actual results are indexed in `artifacts/lab-04/README.md`.
 
 This folder follows the Lab 3 documentation style while preserving `../lab-03/`. The Lab 4 handout explicitly requires `docs/lab-04/` in sections 4.4, 6, 9, 10 and 12.
 

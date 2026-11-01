@@ -1,46 +1,70 @@
 # Lab 4 Peer Review Record
 
-**Status: pending.** No Lab 4 PRs or reviews were created by the documentation-drafting task. A previous Lab 3 approval does not approve Lab 4. Replace placeholders only with verifiable GitHub evidence.
+Verified against GitHub on 1 November 2026. PRs #47?53 have merged into `lab04-staging`; current staging is `096c456`. Feature 24 PR #52 preceded Feature 23 PR #53. Both commits remain integrated. Main is still `fea7caf` (Lab 3); final-main Lab 4 verification remains outstanding.
 
-## Reviewer identities
+## PR #47
 
-| Reviewer GitHub identity | Feature / PR | Review timestamp | Approval link |
-| --- | --- | --- | --- |
-| Pending actual reviewer | Pending | Pending | Pending |
+Reviewer **Jinnakan** ? **APPROVED**, 2026-10-30T11:49:47Z. [Review](https://github.com/N0M3KM/TokTickIT/pull/47#pullrequestreview-5711800955).
 
-## Review register
+lgtm
 
-| Logical feature | Feature branch | PR base | PR link | Reviewer | Comments / author responses / fixes | Approval | State |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| 18 | feature18/lab04-spec | lab04-staging | Pending | Pending | Pending | Pending | Draft only |
-| 19 | feature19/actions-taken-foundation | lab04-staging | Pending | Pending | Pending | Pending | Not started |
-| 20 | feature/20-actions-taken-ui | lab04-staging | Pending | Pending | Pending | Pending | Not started |
-| 21 | feature/21-ticket-workflow | lab04-staging | Pending | Pending | Pending | Pending | Not started |
-| 22 | feature/22-requester-dashboard | lab04-staging | Pending | Pending | Pending | Pending | Not started |
-| 23 | feature/23-staff-dashboard | lab04-staging | Pending | Pending | Pending | Pending | Not started |
-| 24 | feature/24-lab4-hardening-release | lab04-staging | Pending | Pending | Pending | Pending | Not started |
-| Release | lab04-staging | main | Pending | Pending | Pending | Pending | Not authorized |
+Author response: Thank you 3 times. [Response](https://github.com/N0M3KM/TokTickIT/pull/47#issuecomment-6523713462).
 
-## Per-review evidence template
+## PR #48
 
-- Feature and actual GitHub issue number:
-- PR URL; source/base branch; reviewed commit SHA:
-- Reviewer GitHub identity and review timestamp:
-- Feedback summary and direct comment/review link:
-- Author response and direct link:
-- Fix commit(s), affected AC/tests and observed verification:
-- Approval URL/state/time (record Changes requested or Commented accurately):
-- Authorized merge SHA/time and post-merge checks:
+Reviewer **Jinnakan** ? **APPROVED**, 2026-10-30T13:48:29Z. [Review](https://github.com/N0M3KM/TokTickIT/pull/48#pullrequestreview-5713200431).
 
-## Review checklist
+The work is metal solid.
+
+Rejects, doesn�t ignore: unknown or protected fields (performedById, ticketId, __proto__) are rejected, and error messages never echo the offending key.
+Strict typing: the integer checks reject strings and unsafe integers.
+Calendar-safe dates: the date parser rejects Feb 30, hour 24 and a missing time-zone offset.
+Validates the resulting record: parseUpdateAction checks the record as it will be after the PATCH, not just the fields that were sent.
+Fingerprint design: the fingerprint hashes the normalized business fields only, so equivalent payloads match and any real change differs.
+Tests: they cover limits and inclusive date boundaries, and run the full 4x4 status-transition matrix.
 
-- [ ] Contract decisions approved before implementation completion; no unapproved extras.
-- [ ] Schema/migration/seed/recovery preserve historical data.
-- [ ] Role/ownership, inactive assignee, shared/private history and validation verified server-side.
-- [ ] True concurrency/duplicate tests cover gate races and atomic audit writes.
-- [ ] Dashboard queries independently reconciled; time bounds/drill-down/zero behavior correct.
-- [ ] Real UI, responsiveness, keyboard/focus/contrast and safe failure/draft behavior inspected.
-- [ ] Complete regression results reviewed, including collection failures and skipped tests.
-- [ ] Secrets and sensitive evidence excluded; README and final report claims match reality.
+Author response: Thank you!! Please merge this feature. [Response](https://github.com/N0M3KM/TokTickIT/pull/48#issuecomment-6524403976).
 
-Do not mark a feature reviewed because an AI checker passed. Record genuine independent peer approval and retain critical feedback and responses, not only “LGTM”.
+## PR #49
+
+Reviewer **Jinnakan** ? **APPROVED**, 2026-10-30T14:02:51Z. [Review](https://github.com/N0M3KM/TokTickIT/pull/49#pullrequestreview-5713421945).
+
+No issue. Really good job.
+
+Author response: Thank you. Ready to merge!! :) [Response](https://github.com/N0M3KM/TokTickIT/pull/49#issuecomment-6524727271).
+
+## PR #50
+
+Reviewer **Jinnakan** ? **APPROVED**, 2026-10-30T14:40:24Z. [Review](https://github.com/N0M3KM/TokTickIT/pull/50#pullrequestreview-5713905320).
+
+Really good structure and the logic is great. Ready to continue.
+
+Author response: Thank you for the response [Response](https://github.com/N0M3KM/TokTickIT/pull/50#issuecomment-6525469814).
+
+## PR #51
+
+Reviewer **Jinnakan** ? **APPROVED**, 2026-10-31T10:10:18Z. [Review](https://github.com/N0M3KM/TokTickIT/pull/51#pullrequestreview-5722297436).
+
+Everything match the requirement. Ready to merge.
+
+Author response: Thank you sir. [Response](https://github.com/N0M3KM/TokTickIT/pull/51#issuecomment-6542144734).
+
+## PR #52
+
+Reviewer **TauForge** ? **APPROVED**, 2026-10-31T15:36:51Z. [Review](https://github.com/N0M3KM/TokTickIT/pull/52#pullrequestreview-5723585288).
+
+Approved! The acceptance criteria are clear and comprehensive, covering regression testing, accessibility, responsive UI, data integrity, E2E testing, and documentation. I also appreciate the emphasis on proper test evidence, peer reviews, and release verification before merging. Everything is well-structured and provides a solid foundation for a stable release. Great work!
+
+Author response: Than you so much [Response](https://github.com/N0M3KM/TokTickIT/pull/52#issuecomment-6545540468).
+
+## PR #53
+
+Reviewer **TauForge** ? **APPROVED**, 2026-11-01T09:14:52Z. [Review](https://github.com/N0M3KM/TokTickIT/pull/53#pullrequestreview-5727340072).
+
+Approved staff/admin metrics, role access, backend aggregation, secure DTOs, performance and responsive UI requirements.
+
+Author response: Thank you! [Response](https://github.com/N0M3KM/TokTickIT/pull/53#issuecomment-6555986235).
+
+## Remaining evidence
+
+These approvals are genuine peer records, not substitutes for executed tests. Combined-staging verification, remaining manual accessibility observations, final Project/Done and outgoing review evidence, student reflection confirmation and release-to-main checks remain to be recorded. The merge conflict omitted a comma between the staff-browser and seed-recovery scripts; the documentation follow-up repairs that JSON syntax without dropping either command.
