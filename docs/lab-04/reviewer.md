@@ -1,6 +1,6 @@
 # Lab 4 Peer Review Record
 
-Verified against GitHub on 1 November 2026. PRs #47-53 have merged into `lab04-staging`; current staging is `096c456`. Feature 24 PR #52 preceded Feature 23 PR #53. Both commits remain integrated. Main is still `fea7caf` (Lab 3); final-main Lab 4 verification remains outstanding.
+Verified against GitHub on 1 November 2026. PRs #47-53 have merged into `lab04-staging`; current staging is `20b977b` after PR #54. Feature 24 PR #52 preceded Feature 23 PR #53. Both commits remain integrated. Main now contains Lab 4 at `659c3a0` through PR #55; final-main test execution remains outstanding.
 
 ## PR #47
 
@@ -67,7 +67,7 @@ Author response: Thank you! [Response](https://github.com/N0M3KM/TokTickIT/pull/
 
 ## Remaining evidence
 
-These approvals are genuine peer records, not substitutes for executed tests. Combined-staging verification, remaining manual accessibility observations, final Project/Done evidence, student reflection confirmation and release-to-main checks remain to be recorded. The merge conflict omitted a comma between the staff-browser and seed-recovery scripts; the documentation follow-up repairs that JSON syntax without dropping either command.
+These approvals are genuine peer records, not substitutes for executed tests. Combined-staging verification, remaining manual accessibility observations, final Project/Done evidence, student reflection confirmation and post-merge main checks remain to be recorded. The merge conflict omitted a comma between the staff-browser and seed-recovery scripts; PR #54 repaired that JSON syntax before PR #55 without dropping either command.
 
 ## My peer reviews and partner's response
 
@@ -119,3 +119,10 @@ My review: **APPROVED**, 2026-10-31T16:21:28Z. Looks great. Ready to merge [Appr
 
 Partner response: thank you very much [Response](https://github.com/Jinnakan/TokTickIT/pull/65#issuecomment-6546072887) (2026-10-31T16:28:08Z).
 
+## Main release update on 1 November 2026
+
+[PR #54](https://github.com/N0M3KM/TokTickIT/pull/54) merged documentation and the script comma correction into staging at `20b977b5ac12477bbce8beea16a7eebfa79f081f` (11:53:20 UTC). [PR #55](https://github.com/N0M3KM/TokTickIT/pull/55) then merged staging into main at `659c3a033a9b533715652ffcfdfd9355e9349ea7` (11:54:03 UTC). Both test scripts are present in valid main package JSON. The release PR returned no approval review or author comment.
+
+The merge and SHA are verified; earlier 214-client/388-server results remain tied to preparation commit 96e154a. No final-main tests were rerun for this documentation update. Remaining final-main verification, manual accessibility and Done-board evidence are not marked complete.
+
+![Verified Lab 4 integration flow](../../artifacts/lab-04/git-flow-main.png)

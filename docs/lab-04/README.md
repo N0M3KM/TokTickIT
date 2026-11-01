@@ -1,6 +1,6 @@
 # Lab 4 Engineering Contract
 
-**Status updated 1 November 2026:** Features 18?22 and 24 are integrated through PRs #47?52; Feature 23 followed in PR #53. Current staging is `096c456`. Main remains the Lab 3 release at `fea7caf`; no final-main Lab 4 checks are claimed. Historical contract and planned-test language below describe the original drafting stage; actual results are indexed in `artifacts/lab-04/README.md`.
+**Status updated 1 November 2026:** Features 18-22 and 24 are integrated through PRs #47-52; Feature 23 followed in PR #53. Current staging is `20b977b` after PR #54. Lab 4 is released to main at `659c3a0` through PR #55; no final-main test run is claimed. Historical contract and planned-test language below describe the original drafting stage; actual results are indexed in `artifacts/lab-04/README.md`.
 
 This folder follows the Lab 3 documentation style while preserving `../lab-03/`. The Lab 4 handout explicitly requires `docs/lab-04/` in sections 4.4, 6, 9, 10 and 12.
 
@@ -25,3 +25,11 @@ This folder follows the Lab 3 documentation style while preserving `../lab-03/`.
 - Logical feature numbers 18-24 continue the previous 12-17 naming convention; their actual GitHub issues are #40-46 respectively (see issues.md).
 
 Read `specification.md` first, then the API/UI/test contracts and the selected issue. The owner authorized issue creation and Feature 18 commit/push, followed by local uncommitted Feature 19 work. Feature 19 must not be committed or pushed until the owner verifies and merges Feature 18 into `lab04-staging`. No automatic merge is authorized.
+
+## Main release update on 1 November 2026
+
+[PR #54](https://github.com/N0M3KM/TokTickIT/pull/54) merged documentation and the script comma correction into staging at `20b977b5ac12477bbce8beea16a7eebfa79f081f` (11:53:20 UTC). [PR #55](https://github.com/N0M3KM/TokTickIT/pull/55) then merged staging into main at `659c3a033a9b533715652ffcfdfd9355e9349ea7` (11:54:03 UTC). Both test scripts are present in valid main package JSON. The release PR returned no approval review or author comment.
+
+The merge and SHA are verified; earlier 214-client/388-server results remain tied to preparation commit 96e154a. No final-main tests were rerun for this documentation update. Remaining final-main verification, manual accessibility and Done-board evidence are not marked complete.
+
+![Verified Lab 4 integration flow](../../artifacts/lab-04/git-flow-main.png)

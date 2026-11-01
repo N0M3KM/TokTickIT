@@ -18,8 +18,8 @@ feature record. `*-mocked-*` images are mock-only; `*-real-*` checks used actual
 disposable PostgreSQL/API services. No production databases, private uploads,
 tokens or real passwords belong here. Transient runner output is ignored.
 
-Current staging is `096c456839a7717b2f3f973a0e5b4c8e368668a5` after PR #53.
-The merge retained both test scripts but missed their separating comma; this documentation follow-up repairs the JSON syntax. Previous test totals remain historical, not combined-staging results.
+Current staging is `20b977b5ac12477bbce8beea16a7eebfa79f081f` after PR #54; main is `659c3a0` after PR #55.
+The PR #53 merge retained both test scripts but missed their comma; PR #54 repaired the syntax before the main release. Previous test totals remain historical, not combined-staging results.
 
 ## Remaining release gates
 
@@ -28,6 +28,14 @@ The merge retained both test scripts but missed their separating comma; this doc
 - Repeat-seed and separate database/files logical recovery verified in preparation.
 - Remaining UI/accessibility/visual checklist with actual observations.
 - Independent approvals for PRs #47-53 are recorded in docs/lab-04/reviewer.md; student reflection confirmation remains.
-- Separately authorized main release integration, final main SHA and verification.
+- Main release PR #55 and SHA verified; post-merge test execution remains outstanding.
 - Single final Answer Part 1..9 PDF after its evidence/human sections are available.
   Never substitute invented approvals, reflection or final-main results.
+
+## Main release update on 1 November 2026
+
+[PR #54](https://github.com/N0M3KM/TokTickIT/pull/54) merged documentation and the script comma correction into staging at `20b977b5ac12477bbce8beea16a7eebfa79f081f` (11:53:20 UTC). [PR #55](https://github.com/N0M3KM/TokTickIT/pull/55) then merged staging into main at `659c3a033a9b533715652ffcfdfd9355e9349ea7` (11:54:03 UTC). Both test scripts are present in valid main package JSON. The release PR returned no approval review or author comment.
+
+The merge and SHA are verified; earlier 214-client/388-server results remain tied to preparation commit 96e154a. No final-main tests were rerun for this documentation update. Remaining final-main verification, manual accessibility and Done-board evidence are not marked complete.
+
+![Verified Lab 4 integration flow](git-flow-main.png)

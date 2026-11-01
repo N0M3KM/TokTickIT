@@ -27,3 +27,11 @@ The report follows **Lab 4 content and ordering**. The Lab 3 document supplies t
 ## Submission boundaries
 
 The nine-part structure is aligned, but report structure alone does not establish complete Lab 4 grading evidence. The handout requires one final PDF; the current requested deliverable is an editable Word report. A final submission PDF still needs to be exported after outstanding release/human evidence is resolved. Git graph/Done-board captures, complete final-main checks, remaining accessibility and representative regression screens must not be replaced with invented results.
+
+## Main release update on 1 November 2026
+
+[PR #54](https://github.com/N0M3KM/TokTickIT/pull/54) merged documentation and the script comma correction into staging at `20b977b5ac12477bbce8beea16a7eebfa79f081f` (11:53:20 UTC). [PR #55](https://github.com/N0M3KM/TokTickIT/pull/55) then merged staging into main at `659c3a033a9b533715652ffcfdfd9355e9349ea7` (11:54:03 UTC). Both test scripts are present in valid main package JSON. The release PR returned no approval review or author comment.
+
+The merge and SHA are verified; earlier 214-client/388-server results remain tied to preparation commit 96e154a. No final-main tests were rerun for this documentation update. Remaining final-main verification, manual accessibility and Done-board evidence are not marked complete.
+
+![Verified Lab 4 integration flow](../../artifacts/lab-04/git-flow-main.png)
