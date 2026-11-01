@@ -1,9 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Hoist mocks
 // ---------------------------------------------------------------------------
-const { ticketFindMany, ticketCount } = vi.hoisted(() => ({
+const { ticketFindMany, ticketCount, userFindUnique } = vi.hoisted(() => ({
+  userFindUnique: vi.fn(),
   ticketFindMany: vi.fn(),
   ticketCount: vi.fn(),
 }));
@@ -11,11 +12,22 @@ const { ticketFindMany, ticketCount } = vi.hoisted(() => ({
 vi.mock('../../src/lib/prisma.js', () => ({
   prisma: {
     ticket: { findMany: ticketFindMany, count: ticketCount },
+    user: { findUnique: userFindUnique },
   },
 }));
 
 import request from 'supertest';
 import app from '../../src/app.js';
+import { signToken } from '../../src/lib/auth.js';
+
+// Lab 3 replaced caller-selected requester IDs with verified cookie sessions.
+// Keep requireAuth/requirePasswordChanged real; mock only their database reads.
+const requesterCookie = (id = 1) => `tkt_token=${signToken(id, 'REQUESTER')}`;
+beforeEach(() => {
+  vi.stubEnv('JWT_SECRET', 'lab2-authenticated-regression-fixture-only');
+  userFindUnique.mockImplementation(async ({ where }: { where: { id: number } }) => ({ id: where.id, isActive: true, mustChangePassword: false, role: 'REQUESTER' }));
+});
+afterEach(() => vi.unstubAllEnvs());
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -51,26 +63,28 @@ describe('GET /api/tickets', () => {
   beforeEach(() => vi.clearAllMocks());
 
   // API-10: returns only the requester's tickets
-  describe('API-10 — returns tickets for the specified requester', () => {
+  describe('API-10 — returns tickets for the authenticated requester', () => {
     beforeEach(() => setupList([makeTicket()]));
 
     it('returns 200 with data array and pagination', async () => {
-      const res = await request(app).get('/api/tickets?requesterId=1');
+      const res = await request(app).get('/api/tickets').set('Cookie', requesterCookie());
       expect(res.status).toBe(200);
       expect(Array.isArray(res.body.data)).toBe(true);
       expect(res.body.pagination).toBeDefined();
     });
 
     it('calls findMany with the correct requesterId filter', async () => {
-      await request(app).get('/api/tickets?requesterId=1');
+      // A forged legacy query identity cannot change the session-owned predicate.
+      await request(app).get('/api/tickets?requesterId=99').set('Cookie', requesterCookie());
       const callArgs = ticketFindMany.mock.calls[0][0];
       expect(callArgs.where.requesterId).toBe(1);
     });
 
-    it('returns 400 when requesterId is missing', async () => {
+    it('returns 401 when the session is missing, replacing the obsolete requesterId requirement', async () => {
       const res = await request(app).get('/api/tickets');
-      expect(res.status).toBe(400);
-      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+      expect(res.status).toBe(401);
+      expect(res.body.error.code).toBe('UNAUTHENTICATED');
+      expect(ticketFindMany).not.toHaveBeenCalled();
     });
   });
 
@@ -79,7 +93,7 @@ describe('GET /api/tickets', () => {
     beforeEach(() => setupList([makeTicket()]));
 
     it('passes search as contains filter on ticketNumber and summary', async () => {
-      await request(app).get('/api/tickets?requesterId=1&search=laptop');
+      await request(app).get('/api/tickets?search=laptop').set('Cookie', requesterCookie());
       const callArgs = ticketFindMany.mock.calls[0][0];
       expect(callArgs.where.OR).toBeDefined();
       const orConditions = callArgs.where.OR as Array<Record<string, unknown>>;
@@ -94,7 +108,7 @@ describe('GET /api/tickets', () => {
     beforeEach(() => setupList([makeTicket()]));
 
     it('passes categoryId filter to Prisma', async () => {
-      await request(app).get('/api/tickets?requesterId=1&categoryId=2');
+      await request(app).get('/api/tickets?categoryId=2').set('Cookie', requesterCookie());
       const callArgs = ticketFindMany.mock.calls[0][0];
       expect(callArgs.where.categoryId).toBe(2);
     });
@@ -105,7 +119,7 @@ describe('GET /api/tickets', () => {
     beforeEach(() => setupList([makeTicket()]));
 
     it('passes requestedPriority filter to Prisma', async () => {
-      await request(app).get('/api/tickets?requesterId=1&priority=HIGH');
+      await request(app).get('/api/tickets?priority=HIGH').set('Cookie', requesterCookie());
       const callArgs = ticketFindMany.mock.calls[0][0];
       expect(callArgs.where.requestedPriority).toBe('HIGH');
     });
@@ -116,7 +130,7 @@ describe('GET /api/tickets', () => {
     beforeEach(() => setupList(Array.from({ length: 10 }, (_, i) => makeTicket({ id: i + 11 })), 42));
 
     it('returns correct pagination metadata for page 2', async () => {
-      const res = await request(app).get('/api/tickets?requesterId=1&page=2&pageSize=10');
+      const res = await request(app).get('/api/tickets?page=2&pageSize=10').set('Cookie', requesterCookie());
       expect(res.status).toBe(200);
       expect(res.body.pagination.page).toBe(2);
       expect(res.body.pagination.pageSize).toBe(10);
@@ -125,7 +139,7 @@ describe('GET /api/tickets', () => {
     });
 
     it('passes correct skip/take to Prisma for page 2', async () => {
-      await request(app).get('/api/tickets?requesterId=1&page=2&pageSize=10');
+      await request(app).get('/api/tickets?page=2&pageSize=10').set('Cookie', requesterCookie());
       const callArgs = ticketFindMany.mock.calls[0][0];
       expect(callArgs.skip).toBe(10);
       expect(callArgs.take).toBe(10);
@@ -137,7 +151,7 @@ describe('GET /api/tickets', () => {
     beforeEach(() => setupList([makeTicket()]));
 
     it('clamps page=-1 to page=1', async () => {
-      const res = await request(app).get('/api/tickets?requesterId=1&page=-1');
+      const res = await request(app).get('/api/tickets?page=-1').set('Cookie', requesterCookie());
       expect(res.status).toBe(200);
       expect(res.body.pagination.page).toBe(1);
     });
@@ -148,7 +162,7 @@ describe('GET /api/tickets', () => {
     beforeEach(() => setupList([], 0));
 
     it('returns 200 with empty data array and total 0', async () => {
-      const res = await request(app).get('/api/tickets?requesterId=1&search=zzznomatch');
+      const res = await request(app).get('/api/tickets?search=zzznomatch').set('Cookie', requesterCookie());
       expect(res.status).toBe(200);
       expect(res.body.data).toEqual([]);
       expect(res.body.pagination.total).toBe(0);
@@ -160,7 +174,7 @@ describe('GET /api/tickets', () => {
     beforeEach(() => setupList([makeTicket()]));
 
     it('passes the correct orderBy to Prisma', async () => {
-      await request(app).get('/api/tickets?requesterId=1&sort=createdAt&order=asc');
+      await request(app).get('/api/tickets?sort=createdAt&order=asc').set('Cookie', requesterCookie());
       const callArgs = ticketFindMany.mock.calls[0][0];
       expect(callArgs.orderBy).toBeDefined();
       const first = callArgs.orderBy[0] as Record<string, string>;
@@ -176,7 +190,7 @@ describe('GET /api/tickets', () => {
     });
 
     it('returns 500 with safe error envelope', async () => {
-      const res = await request(app).get('/api/tickets?requesterId=1');
+      const res = await request(app).get('/api/tickets').set('Cookie', requesterCookie());
       expect(res.status).toBe(500);
       expect(res.body.error.code).toBe('INTERNAL_ERROR');
       expect(JSON.stringify(res.body)).not.toContain('DB error');
