@@ -11,8 +11,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (!user) return null;
   const links = user.role === 'REQUESTER'
     ? [{ to: '/dashboard', label: 'Dashboard' }, { to: '/tickets', label: 'My Tickets' }, { to: '/tickets/new', label: 'Create Ticket' }]
-    : user.role === 'IT_STAFF' ? [{ to: '/queue', label: 'Ticket Queue' }]
-    : [{ to: '/admin/users', label: 'User Management' }, { to: '/queue', label: 'Ticket Queue' }];
+    : user.role === 'IT_STAFF' ? [{ to: '/dashboard', label: 'Dashboard' }, { to: '/queue', label: 'Ticket Queue' }]
+    : [{ to: '/dashboard', label: 'Dashboard' }, { to: '/queue', label: 'Ticket Queue' }, { to: '/admin/users', label: 'User Management' }];
 
   async function signOut() {
     setBusy(true); setError('');

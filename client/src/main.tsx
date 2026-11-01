@@ -17,26 +17,30 @@ import StaffTicketQueue from './pages/StaffTicketQueue.js';
 import UserManagement from './pages/UserManagement.js';
 import AccountHelp from './pages/AccountHelp.js';
 import RequesterDashboard from './features/requester-dashboard/Dashboard.js';
+import StaffDashboard from './features/staff-dashboard/Dashboard.js';
 
 function Home() {
   const { user } = useAuth();
   if (user?.role === 'REQUESTER') return <Navigate to="/dashboard" replace />;
-  if (user?.role === 'IT_STAFF') return <Navigate to="/queue" replace />;
-  if (user?.role === 'ADMINISTRATOR') return <Navigate to="/admin/users" replace />;
+  if (user?.role === 'IT_STAFF' || user?.role === 'ADMINISTRATOR') return <Navigate to="/dashboard" replace />;
   return <Forbidden />;
 }
 
 function DashboardLanding() {
   const { user } = useAuth();
   if (user?.role === 'REQUESTER') return <RequesterDashboard key={user.id} />;
-  if (user?.role === 'IT_STAFF') return <Navigate to="/queue" replace />;
-  if (user?.role === 'ADMINISTRATOR') return <Navigate to="/admin/users" replace />;
+  if (user?.role === 'IT_STAFF' || user?.role === 'ADMINISTRATOR') return <StaffDashboard key={`${user.id}-${user.role}`} />;
   return <Forbidden />;
 }
 
 function OwnedTicketList() {
   const { user } = useAuth();
   return <MyTickets key={user?.id} />;
+}
+
+function StaffQueue() {
+  const { user } = useAuth();
+  return <StaffTicketQueue key={`${user?.id}-${user?.role}`} />;
 }
 
 function Protected({ children, roles }: { children: React.ReactNode; roles?: UserRole[] }) {
@@ -58,7 +62,7 @@ const router = createBrowserRouter(createRoutesFromElements(<>
     <Route path="/tickets" element={<Protected roles={['REQUESTER']}><OwnedTicketList /></Protected>} />
     <Route path="/tickets/new" element={<Protected roles={['REQUESTER']}><CreateTicket /></Protected>} />
     <Route path="/tickets/:id" element={<Protected roles={['REQUESTER', 'IT_STAFF', 'ADMINISTRATOR']}><TicketDetail /></Protected>} />
-    <Route path="/queue" element={<Protected roles={['IT_STAFF', 'ADMINISTRATOR']}><StaffTicketQueue /></Protected>} />
+    <Route path="/queue" element={<Protected roles={['IT_STAFF', 'ADMINISTRATOR']}><StaffQueue /></Protected>} />
     <Route path="/admin/users" element={<Protected roles={['ADMINISTRATOR']}><UserManagement /></Protected>} />
     <Route path="/forbidden" element={<Forbidden />} />
     <Route path="*" element={<Navigate to="/" replace />} />
