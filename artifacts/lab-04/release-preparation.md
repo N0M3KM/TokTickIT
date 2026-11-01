@@ -1,6 +1,6 @@
 # Release preparation verification
 
-Prepared on 31 October 2026 on `feature/24-lab4-hardening-release`, based on staging commit `e33e80e` (Features 18–22). Feature 23 (`f8a8948`) remains a separate published branch awaiting the owner's PR/merge. These results do not certify the combined Feature 23 release or final main.
+Prepared on 31 October 2026 on `feature/24-lab4-hardening-release`, based on staging commit `e33e80e` (Features 18–22). Feature 23 (`f8a8948`) was subsequently integrated by PR #53 on 1 November 2026, after Feature 24 PR #52. Both are now in staging `096c456`; Feature 24 does not need remerging. These results do not certify the combined Feature 23 release or final main.
 
 ## Changes and observed results
 
